@@ -10,7 +10,7 @@ import {
   DropdownItem
 } from "@heroui/dropdown";
 import { ScrollShadow } from "@heroui/scroll-shadow";
-
+ 
 import tasks from "../user_data/collectTasks"; // Adjust the path as necessary
 
 
@@ -26,8 +26,8 @@ export default function TasksModule() {
 
     return (
       <div className="w-full h-full flex flex-col items-center justify-center">
-        <Card className="w-full h-full">
-          <CardBody className="w-full">
+        <Card className="w-full h-full bg-transparent shadow-none">
+          <CardBody className="w-full p-0">
             <div className="flex flex-row gap-2">
             <Dropdown>
                 <DropdownTrigger>
@@ -56,7 +56,7 @@ export default function TasksModule() {
                     <p className="text-2xl">{task.emoji}</p>
                     <div className="flex flex-col w-full min-w-0">
                       <div className="flex flex-row justify-between items-center gap-2">
-                          <p className="text-[16px] font-bold truncate">{task.name}</p>
+                          <p className="text-[14px] font-bold truncate">{task.name}</p>
                           <div className="flex flex-row gap-2">
                               <p>{task.xp} ✨</p>
                               <p>{task.coins} 🪙 </p>

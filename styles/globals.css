@@ -14,3 +14,42 @@ body {
   .shadow-glow-red {
     box-shadow: 0 0 10px rgba(239, 68, 68, 0.5);
   }
+
+  .transition-width {
+    transition-property: width;
+  }
+  
+  .duration-3000 {
+    transition-duration: 3s;
+  }
+  
+  .custom-ease {
+    transition-timing-function: cubic-bezier(0.5, 0, 0.5, 1);
+  }
+
+  .transition-width {
+    transition-property: width;
+  }
+  .shadow-class {
+    box-shadow: 0px 0px 100px 20px rgba(0,0,0,0.43);
+  }
+
+  .dark-mode ::-webkit-scrollbar {
+    width: 8px;
+  }
+  
+  .dark-mode ::-webkit-scrollbar-track {
+    background: #000; /* Black background for the track */
+  }
+  
+  .dark-mode ::-webkit-scrollbar-thumb {
+    background-color: #333; /* Dark gray for the thumb */
+    border-radius: 10px;
+    border: 2px solid #000; /* Optional: adds a border around the thumb */
+  }
+  
+  /* For Firefox */
+  .dark-mode {
+    scrollbar-width: thin;
+    scrollbar-color: #333 #000; /* Thumb color, Track color */
+  }

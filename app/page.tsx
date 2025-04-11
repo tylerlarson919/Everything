@@ -9,7 +9,7 @@ export default function Home() {
       <div className="w-full h-full flex justify-center">
         <StatsModule />
       </div>
-      <div className="flex flex-col md:flex-row gap-4 items-start justify-center h-full items-stretch">
+      <div className="flex flex-col md:flex-row gap-4 items-start justify-center h-full items-stretch w-full">
         <div className="w-full md:w-2/3">
           <TasksModule />
         </div>

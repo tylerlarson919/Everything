@@ -14,7 +14,7 @@ const config = {
         mono: ["var(--font-mono)"],
       },
       fontSize: {
-        base: "14px",
+        base: "12px",
       },
     },
   },

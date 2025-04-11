@@ -12,18 +12,27 @@ import TimerModule from "@/components/timer-module";
 export default function StatsModule() {
     const [totalCoins, setTotalCoins] = React.useState(100);
     const [currentLevel, setCurrentLevel] = React.useState(1);
+
+    const characterSelectionClick = () => {
+      // Logic to redirect to /characterSelection page
+      window.location.href = "/characterSelection";
+    };
   
     return (
-      <div className="w-full h-full flex flex-row items-center justify-start gap-4 max-w-[1417px]">
-        <Card className="w-full h-full max-w-[746px] min-w-[535px]">
+      <div className="w-full h-full flex flex-col lg:flex-row items-center justify-start gap-4 max-w-[1417px]">
+        <Card className="w-full h-full lg:max-w-[746px] min-w-[550px]">
           <CardBody className="w-full flex flex-row items-start relative min-h-[430px] overflow-hidden z-[0]">
             <div className="absolute right-0 bottom-0 w-auto z-[1]">
-              <Image
-                alt="User Avatar"
-                className="w-auto h-[350px]"
-                isBlurred
-                src="/avatar-test.png"
-              />
+              <Tooltip content="Click to change character" offset={-50}>
+                <button className="flex w-full h-full" onClick={characterSelectionClick} >
+                  <Image
+                    alt="User Avatar"
+                    className="w-auto h-[350px]"
+                    isBlurred
+                    src="/avatar-test.png"
+                  />
+                </button>
+              </Tooltip>
             </div>
             <div className="absolute top-4 left-4 z-10 flex flex-col gap-3 w-64">
               {/* XP Bar with icon and value */}
