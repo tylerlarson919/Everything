@@ -1,17 +1,48 @@
 "use client";
-import React from "react";
+import React, { use } from "react";
 import { Card, CardBody } from "@heroui/card";
-import { Goal } from "../config/types";
 import { Image } from "@heroui/image";
 import ProgressBar from "@/components/progress-bar";
 import HealthBar from "@/components/health-bar";
 import {Tooltip} from "@heroui/tooltip";
-import {Badge} from "@heroui/badge";
 import TimerModule from "@/components/timer-module";
-
+import { useFirestore } from "../config/FirestoreContext";
+import { useEffect } from "react";
+import { Character } from "../config/types";
+import { readSelectedCharacter } from "@/config/firebase";
+import { gameCharacters } from "@/config/characters";
 export default function StatsModule() {
-    const [totalCoins, setTotalCoins] = React.useState(100);
-    const [currentLevel, setCurrentLevel] = React.useState(1);
+  const { user, items, loading } = useFirestore();
+  const [totalCoins, setTotalCoins] = React.useState(100);
+  const [currentLevel, setCurrentLevel] = React.useState(1);
+  const [selectedCharacter, setSelectedCharacter] = React.useState<Character | null>(null);
+  const [characterImg, setCharacterImg] = React.useState<string>("/default");
+  const [isImageLoaded, setIsImageLoaded] = React.useState(false);
+
+  const handleImageLoad = () => {
+    setIsImageLoaded(true);
+  };
+
+  useEffect(() => {
+    if (user && !selectedCharacter) {
+      readSelectedCharacter(user.uid).then((characterId) => {
+        const character = gameCharacters.find((char) => char.id === characterId);
+        if (character) {
+          setSelectedCharacter(character);
+          console.log(character);
+        }
+      });
+    }
+  }, [user, selectedCharacter]);
+
+  useEffect(() => {
+    if (selectedCharacter && user) {
+      setCharacterImg(`${selectedCharacter.folderPath}/profile.png`);
+      console.log(characterImg);
+
+    }
+  }, [user, selectedCharacter, characterImg]);
+
 
     const characterSelectionClick = () => {
       // Logic to redirect to /characterSelection page
@@ -22,14 +53,15 @@ export default function StatsModule() {
       <div className="w-full h-full flex flex-col lg:flex-row items-center justify-start gap-4 max-w-[1417px]">
         <Card className="w-full h-full lg:max-w-[746px] min-w-[550px]">
           <CardBody className="w-full flex flex-row items-start relative min-h-[430px] overflow-hidden z-[0]">
-            <div className="absolute right-0 bottom-0 w-auto z-[1]">
+            <div className="absolute right-2 bottom-0 w-auto z-[1]">
               <Tooltip content="Click to change character" offset={-50}>
                 <button className="flex w-full h-full" onClick={characterSelectionClick} >
                   <Image
                     alt="User Avatar"
-                    className="w-auto h-[350px]"
+                    className="w-auto h-[380px]"
                     isBlurred
-                    src="/avatar-test.png"
+                    src={characterImg}
+                    onLoad={handleImageLoad}
                   />
                 </button>
               </Tooltip>
@@ -77,11 +109,11 @@ export default function StatsModule() {
             </div>
             <div className="flex flex-col gap-1 rounded-xl p-6 w-fit md:w-[380px] absolute bottom-8 left-0 z-[2]">
                 <div className="flex flex-row gap-2 items-end relative">
-                  <p className="text-4xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-blue-500 to-purple-600">
-                    Clove
+                  <p className="text-4xl font-bold bg-clip-text tracking-wide">
+                    {user?.displayName?.split(" ")[0]}
                   </p>
                   <p className="font-bold pb-1">
-                    lvl ${currentLevel}
+                    lvl {currentLevel}
                   </p>
                   <p className="text-gray-600 dark:text-gray-400 flex gap-2 pb-1 absolute right-0">
                     Playtime:{" "}
@@ -155,11 +187,7 @@ export default function StatsModule() {
             </div>
           </CardBody>
         </Card>
-        <Card className="w-full">
-            <CardBody className="w-full flex flex-row items-center relative min-h-[430px] overflow-hidden z-[0] ">
-                <TimerModule />
-            </CardBody>
-        </Card>
+        <TimerModule />
       </div>
     );
   }

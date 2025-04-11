@@ -1,7 +1,8 @@
 "use client";
 import React, { useState, useRef } from "react";
 import { Button } from "@heroui/button";
-
+import  { Card, CardBody } from "@heroui/card";
+import GardenModule from "@/components/garden-module";
 export default function TimerModule() {
   const [time, setTime] = useState(0); // Time in seconds
   const [isRunning, setIsRunning] = useState(false);
@@ -41,18 +42,25 @@ export default function TimerModule() {
   };
 
   return (
-    <div className="w-full h-full flex flex-col items-center justify-center gap-2">
-      <p className="text-4xl font-bold">{formatTime(time)}</p>
-      {!hasStarted ? (
-        <Button onPress={startPauseTimer}>Start Timer</Button>
-      ) : (
-        <div className="flex flex-row items-center gap-2">
-          <Button onPress={startPauseTimer}>
-            {isRunning ? "Pause Timer" : "Resume Timer"}
-          </Button>
-          <Button onPress={endTimer}>End</Button>
+    <Card className="w-full">
+      <CardBody className="w-full flex flex-row items-end justify-center relative min-h-[430px] overflow-hidden z-[0] ">
+        <div className="absolute top-0 left-0 w-full h-full">
+          <GardenModule />
         </div>
-      )}
-    </div>
+        <div className="flex flex-col items-center justify-center gap-2 ">
+          <p className="text-4xl font-bold">{formatTime(time)}</p>
+          {!hasStarted ? (
+            <Button onPress={startPauseTimer}>Start Timer</Button>
+          ) : (
+            <div className="flex flex-row items-center gap-2">
+              <Button onPress={startPauseTimer}>
+                {isRunning ? "Pause Timer" : "Resume Timer"}
+              </Button>
+              <Button onPress={endTimer}>End</Button>
+            </div>
+          )}
+        </div>
+      </CardBody>
+    </Card>
   );
 }

@@ -38,3 +38,13 @@ export interface Goal {
     specialAbilityPath: string;
     MoveType: 'walk' | 'run' | 'both';
   }
+
+  export interface Player {
+    id: string;
+    name: string;
+    level: number;
+    xp: number;
+    coins: number;
+    characters: Character[];
+    currentCharacter: Character | null;
+  }

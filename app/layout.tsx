@@ -3,10 +3,11 @@ import { Metadata, Viewport } from "next";
 import clsx from "clsx";
 
 import { Providers } from "./providers";
-
+import { AuthProvider } from "../config/auth";
 import { siteConfig } from "@/config/site";
 import { fontSans } from "@/config/fonts";
 import { Navbar } from "@/components/navbar";
+import { FirestoreProvider } from "../config/FirestoreContext"; // Adjust the import path as necessary
 
 export const metadata: Metadata = {
   title: {
@@ -40,14 +41,18 @@ export default function RootLayout({
           fontSans.variable,
         )}
       >
-        <Providers themeProps={{ attribute: "class", defaultTheme: "dark" }}>
-          <div className="relative flex flex-col min-h-screen">
-            <Navbar />
-            <main className="w-full h-full p-6">
-              {children}
-            </main>
-          </div>
-        </Providers>
+        <AuthProvider>
+          <FirestoreProvider>
+          <Providers themeProps={{ attribute: "class", defaultTheme: "dark" }}>
+            <div className="relative flex flex-col min-h-screen">
+              <Navbar />
+              <main className="w-full h-full p-6">
+                {children}
+              </main>
+            </div>
+          </Providers>
+          </FirestoreProvider>
+        </AuthProvider>
       </body>
     </html>
   );

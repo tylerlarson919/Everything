@@ -7,12 +7,17 @@ import LeftCaret from '@/components/icons/left-caret';
 import RightCaret from '@/components/icons/right-caret';
 import PlayIcon from '@/components/icons/play';
 import CharacterAnimation from '@/components/characterAnimations';
+import { useFirestore } from "../../config/FirestoreContext";
+import { writeSelectedCharacter } from '../../config/firebase';
+import { useRouter } from "next/navigation";
 
 const CharacterSelection = () => {
+  const { user, items, loading } = useFirestore();
   const [characters, setCharacters] = useState<Character[]>([]);
   const [selectedCharacter, setSelectedCharacter] = useState<Character | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [currentAnimation, setCurrentAnimation] = useState<'idle' | 'run' | 'walk' | 'attack' | 'special' | null>('idle');
+  const router = useRouter();
 
   // Fetch available characters on component mount
   useEffect(() => {
@@ -48,11 +53,16 @@ const CharacterSelection = () => {
     setSelectedCharacter(characters[nextIndex]);
   };
 
-  const handleSelectCharacter = () => {
-    if (!selectedCharacter) return;
-    // Handle character selection logic here
-    console.log(`Selected character: ${selectedCharacter.name}`);
-    // You would typically navigate to the next screen or start the game
+  const handleSelectCharacter = async () => {
+    if (!selectedCharacter || !user) return; // Ensure selectedCharacter and user are defined
+
+    try {
+      await writeSelectedCharacter(user.uid, selectedCharacter.id); // Write to Firestore
+      router.push("/");
+      // You can add additional logic here, like navigating to another page
+    } catch (error) {
+      console.error("Error saving selected character:", error);
+    }
   };
 
   const playAttack = () => {
@@ -94,7 +104,7 @@ const CharacterSelection = () => {
   }
 
   return (
-    <div className="flex flex-col items-center p-8 w-screen bg-[url('/space-bg.jpg')] bg-cover bg-center">
+    <div className="flex flex-col items-center p-8 w-screen bg-cover bg-center">
      {selectedCharacter && (
 
         <div className="flex flex-col w-full max-w-6xl">
