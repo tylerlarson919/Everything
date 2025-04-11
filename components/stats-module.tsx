@@ -16,7 +16,7 @@ export default function StatsModule() {
   const [totalCoins, setTotalCoins] = React.useState(100);
   const [currentLevel, setCurrentLevel] = React.useState(1);
   const [selectedCharacter, setSelectedCharacter] = React.useState<Character | null>(null);
-  const [characterImg, setCharacterImg] = React.useState<string>("/default");
+  const [characterImg, setCharacterImg] = React.useState<string>("/characters/Raiders/Raider_1/profile.png");
   const [isImageLoaded, setIsImageLoaded] = React.useState(false);
 
   const handleImageLoad = () => {
@@ -58,10 +58,11 @@ export default function StatsModule() {
                 <button className="flex w-full h-full" onClick={characterSelectionClick} >
                   <Image
                     alt="User Avatar"
-                    className="w-auto h-[380px]"
+                    className={`w-auto h-[380px] ${isImageLoaded ? 'opacity-100' : 'opacity-0'}`}
                     isBlurred
                     src={characterImg}
                     onLoad={handleImageLoad}
+                    
                   />
                 </button>
               </Tooltip>

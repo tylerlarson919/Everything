@@ -1,6 +1,6 @@
 import { initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
-import { getFirestore, doc, setDoc, getDoc } from "firebase/firestore"; // Import Firestore functions
+import { getFirestore, doc, setDoc, getDoc, updateDoc } from "firebase/firestore"; // Import Firestore functions
 
 const firebaseConfig = {
   apiKey: "AIzaSyAlosKtzy7eSbganxGzwyJHsl9ok3jVFHg",
@@ -23,6 +23,17 @@ const writeSelectedCharacter = async (userId: string, characterId: string) => {
   await setDoc(playerRef, { selectedCharacter: characterId });
 };
 
+const completeTask = async (userId: string, taskId: string) => {
+  const taskRef = doc(firestore, `users/${userId}/tasks/${taskId}`);
+  await updateDoc(taskRef, { completed: true});
+};
+
+// Fix the undoCompleteTask function
+const undoCompleteTask = async (userId: string, taskId: string) => {
+  const taskRef = doc(firestore, `users/${userId}/tasks/${taskId}`);
+  await updateDoc(taskRef, { completed: false});
+};
+
 const readSelectedCharacter = async (userId: string) => {
   try {
     const playerRef = doc(firestore, `users/${userId}/playerData/selectedCharacter`); // Adjust the path as necessary
@@ -41,4 +52,4 @@ const readSelectedCharacter = async (userId: string) => {
 };
 
 
-export { auth, firestore, writeSelectedCharacter, readSelectedCharacter }; 
+export { auth, firestore, writeSelectedCharacter, readSelectedCharacter, completeTask, undoCompleteTask }; 

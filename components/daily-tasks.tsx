@@ -1,11 +1,40 @@
 "use client";
-import React, { useEffect, useRef } from 'react';
-import tasks from "../user_data/collectTasks";
+import React, { useEffect, useRef, useState } from 'react';
 import { Task } from "../config/types";
+import { fetchUserTasks } from "../user_data/collectUdata";
+import RefreshIcon from './icons/refresh';
+import { QueryModal } from "@/components/query-modal";
 
 export default function DailyTaskView() {
   const timelineRef = useRef<HTMLDivElement | null>(null);
-  
+    const [tasks, setTasks] = useState<Task[]>([]);
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [modalType, setModalType] = useState("");
+    const [modalData, setModalData] = useState(undefined);
+    const prevModalOpenRef = React.useRef(isModalOpen);
+
+
+    useEffect(() => {
+      // Check if modal was just closed (previously open, now closed)
+      if (prevModalOpenRef.current === true && isModalOpen === false) {
+        loadTasks();
+      }
+      // Update the ref with current value for next comparison
+      prevModalOpenRef.current = isModalOpen;
+    }, [isModalOpen]);
+
+    const loadTasks = async () => {
+      try {
+        const userTasks = await fetchUserTasks();
+        setTasks(userTasks);
+      } catch (err) {
+        console.log("Failed to load tasks", err);
+      }
+    };
+    
+    useEffect(() => {    
+      loadTasks();
+    }, []);
   // Format ISO date string to time format (12:30pm)
   const formatTimeDisplay = (isoString: string): string => {
     const date = new Date(isoString);
@@ -137,8 +166,12 @@ const isTaskForToday = (task: Task): boolean => {
 
   return (
     <div className="dark:bg-[#18181b] rounded-xl shadow-lg p-4 w-full max-w-[1417px] min-h-[700px] mx-auto z-1">
-      <h2 className="text-xl font-bold pb-2">Daily Tasks - {formatTodayDate()}</h2>
-      
+      <div className='flex flex-row justify-start items-center pb-2 gap-2'>
+        <h2 className="text-xl font-bold">Daily Tasks - {formatTodayDate()}</h2>
+        <button onClick={loadTasks}>
+          <RefreshIcon className='w-6 h-6 text-black dark:text-white'/>
+        </button>
+      </div>
       <div 
         ref={timelineRef}
         className="relative h-[650px] overflow-y-auto overflow-x-hidden pr-4 pt-4"

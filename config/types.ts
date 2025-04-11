@@ -1,12 +1,21 @@
-export interface Goal {
+export interface Habit {
     name: string;
-    startTime: string;
-    endTime: string;
     description: string;
     emoji: string;
     xp: number;
-    coins: number;
-    completed: boolean;
+    health: number;
+    recurrence: string[];
+    formed: boolean;
+    id: string;
+  }
+  export interface HabitLog {
+    name: string;
+    description: string;
+    emoji: string;
+    xp: number;
+    health: number;
+    dueDate: string;
+    id: string;
   }
   export interface Task {
     name: string;
@@ -19,8 +28,20 @@ export interface Goal {
     completed: boolean;
     color: string;
     id: string;
+    goalId?: string;
   }
-  
+  export interface Goal {
+    name: string;
+    dueDate: string;
+    description: string;
+    emoji: string;
+    xp: number;
+    coins: number;
+    completed: boolean;
+    color: string;
+    id: string;
+    taskId?: string[];
+  }
 
   export interface Character {
     id: string;
