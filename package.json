@@ -23,9 +23,11 @@
     "@heroui/modal": "^2.2.14",
     "@heroui/navbar": "2.2.15",
     "@heroui/scroll-shadow": "^2.3.11",
+    "@heroui/select": "^2.4.17",
     "@heroui/snippet": "2.2.18",
     "@heroui/switch": "2.2.15",
     "@heroui/system": "2.4.13",
+    "@heroui/tabs": "^2.2.14",
     "@heroui/theme": "2.4.13",
     "@heroui/toast": "^2.0.7",
     "@heroui/tooltip": "^2.2.14",
@@ -40,7 +42,9 @@
     "next-themes": "^0.4.4",
     "react": "18.3.1",
     "react-dom": "18.3.1",
-    "react-router-dom": "^7.5.0"
+    "react-firebase-hooks": "^5.1.1",
+    "react-router-dom": "^7.5.0",
+    "zustand": "^5.0.3"
   },
   "devDependencies": {
     "@next/eslint-plugin-next": "15.0.4",

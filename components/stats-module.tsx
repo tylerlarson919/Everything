@@ -11,38 +11,28 @@ import { useEffect } from "react";
 import { Character } from "../config/types";
 import { readSelectedCharacter } from "@/config/firebase";
 import { gameCharacters } from "@/config/characters";
+import { usePlayerStore } from '../stores/playerStore';
+
 export default function StatsModule() {
   const { user, items, loading } = useFirestore();
-  const [totalCoins, setTotalCoins] = React.useState(100);
-  const [currentLevel, setCurrentLevel] = React.useState(1);
-  const [selectedCharacter, setSelectedCharacter] = React.useState<Character | null>(null);
   const [characterImg, setCharacterImg] = React.useState<string>("/characters/Raiders/Raider_1/profile.png");
   const [isImageLoaded, setIsImageLoaded] = React.useState(false);
+  const { coins, xp, level, selectedCharacter, health, playtime } = usePlayerStore();
+  const playtimeHours = Math.floor(playtime / 3600);
 
   const handleImageLoad = () => {
     setIsImageLoaded(true);
   };
 
   useEffect(() => {
-    if (user && !selectedCharacter) {
-      readSelectedCharacter(user.uid).then((characterId) => {
-        const character = gameCharacters.find((char) => char.id === characterId);
-        if (character) {
-          setSelectedCharacter(character);
-          console.log(character);
-        }
-      });
-    }
-  }, [user, selectedCharacter]);
-
-  useEffect(() => {
     if (selectedCharacter && user) {
-      setCharacterImg(`${selectedCharacter.folderPath}/profile.png`);
-      console.log(characterImg);
+      const characterData = gameCharacters.find(char => char.id === selectedCharacter);
+    if (characterData) {
+      setCharacterImg(`${characterData.folderPath}/profile.png`);
+    }
 
     }
   }, [user, selectedCharacter, characterImg]);
-
 
     const characterSelectionClick = () => {
       // Logic to redirect to /characterSelection page
@@ -77,12 +67,12 @@ export default function StatsModule() {
                   <div className="flex justify-between items-center mb-0.5">
                     <span className="text-xs font-medium text-blue-300">XP</span>
                     <span className="text-xs font-bold text-blue-200">
-                      50/100
+                      {xp}
                     </span>
                   </div>
-                  <Tooltip content="50/100 XP">
+                  <Tooltip content={`${xp} XP`}>
                     <div className="flex w-full">
-                      <ProgressBar percent={50} />
+                      <ProgressBar percent={xp} />
                     </div>
                   </Tooltip>
                 </div>
@@ -98,11 +88,11 @@ export default function StatsModule() {
                     <span className="text-xs font-medium text-red-300">
                       HEALTH
                     </span>
-                    <span className="text-xs font-bold text-red-200">95/100</span>
+                    <span className="text-xs font-bold text-red-200">{health}/100</span>
                   </div>
-                  <Tooltip content="95/100" placement="bottom">
+                  <Tooltip content={`${health}/100`} placement="bottom">
                     <div className="flex w-full">
-                      <HealthBar percent={95} />
+                      <HealthBar percent={health} />
                     </div>
                   </Tooltip>
                 </div>
@@ -114,11 +104,11 @@ export default function StatsModule() {
                     {user?.displayName?.split(" ")[0]}
                   </p>
                   <p className="font-bold pb-1">
-                    lvl {currentLevel}
+                    lvl {level}
                   </p>
                   <p className="text-gray-600 dark:text-gray-400 flex gap-2 pb-1 absolute right-0">
                     Playtime:{" "}
-                    <span className="font-semibold">568H</span>
+                    <span className="font-semibold">{playtimeHours}H</span>
                   </p>
                 </div>
                 <div className="grid grid-cols-3 gap-5 max-w-[400px]">
@@ -175,13 +165,13 @@ export default function StatsModule() {
             <div className="flex flex-row gap-4 absolute top-6 right-6 z-[10]">
               <div className="bg-amber-100 dark:bg-amber-900/30 px-4 py-2 rounded-full flex items-center gap-2 shadow-md">
                 <span className="font-bold text-xl text-amber-800 dark:text-amber-200">
-                  {totalCoins}
+                  {coins}
                 </span>
                 <span className="text-xl">🪙</span>
               </div>
               <div className="bg-blue-100 dark:bg-blue-900/30 px-4 py-2 rounded-full flex items-center gap-2 shadow-md">
                 <span className="font-bold text-xl text-blue-800 dark:text-blue-200">
-                  lvl {currentLevel}
+                  lvl {level}
                 </span>
                 <span className="text-xl">✨</span>
               </div>

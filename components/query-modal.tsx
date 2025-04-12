@@ -15,7 +15,6 @@ interface QueryModalProps {
 }
 
 export const QueryModal: React.FC<QueryModalProps> = ({ isOpen, onClose, modalType, data }) => {
-  console.log("QueryModal rendered with props:", { isOpen, modalType, hasData: !!data });
   const [formData, setFormData] = useState<Task | Habit | Goal | null>(null);
   const [currentUser, setCurrentUser] = useState<any>(null);
 

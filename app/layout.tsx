@@ -8,6 +8,7 @@ import { siteConfig } from "@/config/site";
 import { fontSans } from "@/config/fonts";
 import { Navbar } from "@/components/navbar";
 import { FirestoreProvider } from "../config/FirestoreContext"; // Adjust the import path as necessary
+import { PlayerDataProvider } from '../components/PlayerDataProvider';
 
 export const metadata: Metadata = {
   title: {
@@ -43,6 +44,8 @@ export default function RootLayout({
       >
         <AuthProvider>
           <FirestoreProvider>
+          <PlayerDataProvider>
+
           <Providers themeProps={{ attribute: "class", defaultTheme: "dark" }}>
             <div className="relative flex flex-col min-h-screen">
               <Navbar />
@@ -51,6 +54,7 @@ export default function RootLayout({
               </main>
             </div>
           </Providers>
+          </PlayerDataProvider>
           </FirestoreProvider>
         </AuthProvider>
       </body>
