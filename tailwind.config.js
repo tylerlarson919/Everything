@@ -16,6 +16,12 @@ const config = {
       fontSize: {
         base: "12px",
       },
+      colors: {
+        dark1: '#0a0a0b',
+        dark2: '#18181b',
+        dark3: '#393940',
+
+      },
     },
   },
   darkMode: "class",

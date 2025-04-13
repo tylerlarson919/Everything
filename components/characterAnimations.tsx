@@ -1,116 +1,98 @@
 import React, { useEffect, useState } from 'react';
 import { gameCharacters } from '../config/characters';
-import { Character } from '../config/types';
+import { Character, Animation } from '../config/types';
 
 interface CharacterAnimationProps {
   characterId: string;
-  animationTrigger: 'idle' | 'run' | 'walk' | 'attack' | 'special' | null;
+  animationTrigger: keyof Character['animations'] | null;
 }
 
 const CharacterAnimation: React.FC<CharacterAnimationProps> = ({ characterId, animationTrigger }) => {
   const character = gameCharacters.find(char => char.id === characterId);
   const [currentFrame, setCurrentFrame] = useState(0);
-  const [animationPath, setAnimationPath] = useState<string>('');
-  const frameWidth = 512; // Width of each frame
-  const frameHeight = 512; // Height of each frame
-  const [totalFrames, setTotalFrames] = useState(0);
+  const [currentAnimation, setCurrentAnimation] = useState<Animation | null>(null);
+  const [animationName, setAnimationName] = useState<string>('idle');
   const [isIdle, setIsIdle] = useState(true);
 
+  // Preload the character sprite sheet
   useEffect(() => {
-    if (character) {
-      const pathsToPreload = [
-        `${character.folderPath}/idle.png`,
-        `${character.folderPath}/run.png`,
-        `${character.folderPath}/walk.png`,
-        `${character.folderPath}/attack.png`,
-        `${character.folderPath}/special.png`,
-      ];
-  
-      pathsToPreload.forEach(path => {
-        const img = new Image();
-        img.src = path;
-      });
-    }
+    if (!character) return;
+
+    const img = new Image();
+    img.src = `${character.folderPath}/player.png`;
   }, [character]);
-  
+
+  // Handle animation trigger changes
   useEffect(() => {
-    if (character) {
-      if (animationTrigger) {
-        const paths = getAnimationPath(animationTrigger, character);
-        setIsIdle(false);
-        if (Array.isArray(paths)) {
-          // Handle multiple sprite sheets for attack and special
-          setAnimationPath(paths[0]);
-          setCurrentFrame(0);
-        } else {
-          // Single sprite sheet
-          setAnimationPath(paths);
-          setCurrentFrame(0);
-        }
-      } else {
-        setAnimationPath(`${character.folderPath}/idle.png`);
-        setCurrentFrame(0);
-        setIsIdle(true);
-      }
+    if (!character) return;
+
+    if (!animationTrigger) {
+      // Default to idle animation
+      setAnimationName('idle');
+      setCurrentAnimation(character.animations.idle);
+      setIsIdle(true);
+      setCurrentFrame(0);
+      return;
+    }
+
+    if (character.animations[animationTrigger]) {
+      setAnimationName(animationTrigger);
+      setCurrentAnimation(character.animations[animationTrigger]);
+      setIsIdle(animationTrigger === 'idle');
+      setCurrentFrame(0);
+    } else {
+      // Fall back to idle if the requested animation doesn't exist
+      setAnimationName('idle');
+      setCurrentAnimation(character.animations.idle);
+      setIsIdle(true);
+      setCurrentFrame(0);
     }
   }, [animationTrigger, character]);
 
+  // Animation frame controller
   useEffect(() => {
-    if (animationPath) {
-      const img = new Image();
-      img.src = animationPath;
-      img.onload = () => {
-        setTotalFrames(img.width / frameWidth);
-      };
-    }
-  }, [animationPath]);
+    if (!character || !currentAnimation) return;
 
-  useEffect(() => {
-    if (animationPath) {
-      const interval = setInterval(() => {
-        setCurrentFrame(prevFrame => {
-          const nextFrame = prevFrame + 1;
-          if (nextFrame >= totalFrames) {
-            if (!isIdle) {
-              clearInterval(interval);
-              setAnimationPath(`${character?.folderPath}/idle.png`);
-              setIsIdle(true);
-              return 0; // Reset to the first frame
-            }
-            return 0; // Reset to the first frame for idle
+    const interval = setInterval(() => {
+      setCurrentFrame(prevFrame => {
+        const nextFrame = prevFrame + 1;
+        if (nextFrame >= currentAnimation.frames) {
+          if (!isIdle) {
+            // Non-idle animations should revert to idle when complete
+            setAnimationName('idle');
+            setCurrentAnimation(character.animations.idle);
+            setIsIdle(true);
+            return 0;
           }
-          return nextFrame;
-        });
-      }, 100); // Adjust duration as needed
-  
-      return () => clearInterval(interval);
-    }
-  }, [animationPath, totalFrames, isIdle, character]);
+          return 0; // Loop idle animation
+        }
+        return nextFrame;
+      });
+    }, 100); // Animation speed (adjust as needed)
 
-  const getAnimationPath = (trigger: string, character: Character) => {
-    switch (trigger) {
-      case 'run':
-        return `${character.folderPath}/run.png`;
-      case 'walk':
-        return `${character.folderPath}/walk.png`;
-      case 'attack':
-        return `${character.folderPath}/attack.png`;
-      case 'special':
-        return `${character.folderPath}/special.png`;
-      default:
-        return `${character.folderPath}/idle.png`;
-    }
-  };
-  
+    return () => clearInterval(interval);
+  }, [character, currentAnimation, isIdle]);
+
+  if (!character || !currentAnimation) {
+    return null;
+  }
+
+  // Calculate background position based on current animation row and frame
+  const backgroundPositionX = -currentFrame * currentAnimation.frameWidth;
+  const backgroundPositionY = -currentAnimation.row * currentAnimation.frameHeight;
+
   return (
     <div className="-mt-[250px] sm:absolute sm:bottom-28 flex justify-center items-center w-fit h-full">
       <div
         style={{
-          width: `${frameWidth}px`,
-          height: `${frameHeight}px`,
-          backgroundImage: `url(${animationPath})`,
-          backgroundPosition: `-${currentFrame * frameWidth}px 0px`,
-          backgroundSize: `${frameWidth * totalFrames}px ${frameHeight}px`,
+          width: `${currentAnimation.frameWidth}px`,
+          height: `${currentAnimation.frameHeight}px`,
+          backgroundImage: `url(${character.folderPath}/player.png)`,
+          backgroundPosition: `${backgroundPositionX}px ${backgroundPositionY}px`,
+          backgroundSize: 'auto',
+          imageRendering: 'pixelated',
+          transform: 'scale(2.5)',
+          transformOrigin: 'center',
         }}
         className="sprite-animation"
       />

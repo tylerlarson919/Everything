@@ -4,11 +4,12 @@ import { Button } from "@heroui/button";
 import { Card, CardBody } from "@heroui/card";
 import { Tabs, Tab } from "@heroui/tabs";
 import { Input } from "@heroui/input";
-import { Select, SelectItem } from "@heroui/select";
-import GardenModule from "@/components/garden-module";
+import TimerAnimationModule from "@/components/timer-animation-module";
 import { usePlayerStore } from "../stores/playerStore";
-import { doc, collection, addDoc, serverTimestamp } from "firebase/firestore";
+import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 import { firestore } from "../config/firebase";
+import SettingsIcon from "./icons/settings";
+import { relative } from "path";
 
 // Timer modes
 enum TimerMode {
@@ -37,7 +38,7 @@ export default function TimerModule() {
   const [totalSessionTime, setTotalSessionTime] = useState(0);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [settings, setSettings] = useState(DEFAULT_SETTINGS);
-  const [sessionTitle, setSessionTitle] = useState("Focus Session");
+  const [sessionTitle, setSessionTitle] = useState("");
   const [sessionNotes, setSessionNotes] = useState("");
   const [showCompletionDialog, setShowCompletionDialog] = useState(false);
   
@@ -207,72 +208,80 @@ export default function TimerModule() {
 
   return (
     <Card className="w-full">
-      <CardBody className="w-full flex flex-col relative min-h-[430px] overflow-hidden z-[0]">
-        <div className="absolute top-0 left-0 w-full h-full">
-          <GardenModule />
-        </div>
-        
-        <div className="z-10 flex flex-col items-center w-full mt-4">
-          {/* Timer Mode Tabs */}
-          <Tabs 
-            selectedKey={mode}
-            onSelectionChange={(key: any) => setMode(key as TimerMode)}
-            className="mb-6"
-          >
-            <Tab key={TimerMode.POMODORO} title="Focus" />
-            <Tab key={TimerMode.SHORT_BREAK} title="Short Break" />
-            <Tab key={TimerMode.LONG_BREAK} title="Long Break" />
-          </Tabs>
-          
-          {/* Session Title Input (only in Pomodoro mode) */}
-          {mode === TimerMode.POMODORO && (
-            <Input
-              label="Session Title"
-              value={sessionTitle}
-              onChange={(e) => setSessionTitle(e.target.value)}
-              className="mb-4 max-w-xs"
-              placeholder="What are you working on?"
-            />
-          )}
-          
+      <CardBody className="w-full flex flex-col relative min-h-[430px] overflow-hidden z-[0] justify-start items-center gap-10">
+          <div className="w-full h-full absolute bottom-0 left-0">
+            <TimerAnimationModule isRunning={isRunning} />
+          </div>
+          <div className="flex flex-col justify-center items-center w-full z-[20]">
+            <button onClick={() => setIsSettingsOpen(true)}>
+              <SettingsIcon className="absolute top-2 right-3 w-7 h-7 text-black dark:text-white"/>
+            </button>
+            <button onClick={() => setIsSettingsOpen(true)}>
+              <SettingsIcon className="absolute top-2 left-3 w-7 h-7 text-black dark:text-white"/>
+            </button>
+            
+          </div>
+          <div className="flex flex-col gap-1 items-center justify-center w-fit z-[20] p-4 bg-black/20 rounded-lg backdrop-blur-sm">
           {/* Timer Display */}
-          <div className="text-6xl font-bold mb-6 font-mono">
-            {formatTime(timeRemaining)}
-          </div>
-          
-          {/* Session Counter (only in Pomodoro mode) */}
-          {mode === TimerMode.POMODORO && (
-            <div className="text-sm mb-4">
-              Session {sessions + 1} • Total Focus Time: {Math.floor(totalSessionTime / 60)} minutes
+            <div className="text-5xl font-bold font-mono">
+              {formatTime(timeRemaining)}
             </div>
-          )}
-          
-          {/* Timer Controls */}
-          <div className="flex gap-3 mb-6">
-            {isRunning ? (
-              <Button color="warning" onPress={stopTimer}>Pause</Button>
-            ) : (
-              <Button color="success" onPress={startTimer}>Start</Button>
+            
+            {/* Session Counter (only in Pomodoro mode) */}
+            {mode === TimerMode.POMODORO && (
+              <div className={`text-gray-600 dark:text-gray-400 ${isRunning ? "hidden" : "relative"} transition-all duration-1000`}>
+                Session {sessions + 1} • Total Focus Time: {Math.floor(totalSessionTime / 60)} minutes
+              </div>
             )}
-            <Button color="danger" onPress={resetTimer}>Reset</Button>
-            <Button color="secondary" onPress={skipTimer}>Skip</Button>
+            {/* Timer Mode Tabs */}
+            <Tabs 
+              className={`${isRunning ? "hidden" : "absolute"} transition-all duration-1000`}
+              selectedKey={mode}
+              size="sm"
+              onSelectionChange={(key: any) => setMode(key as TimerMode)}
+              classNames={{
+                base: "absolute -top-[43px]"
+              }}
+            >
+              <Tab key={TimerMode.POMODORO} title="Focus" />
+              <Tab key={TimerMode.SHORT_BREAK} title="Short Break" />
+              <Tab key={TimerMode.LONG_BREAK} title="Long Break" />
+            </Tabs>
+            
+            {/* Session Title Input (only in Pomodoro mode) */}
+            {mode === TimerMode.POMODORO && (
+              <Input
+                label="Session Title"
+                labelPlacement="outside"
+                size="sm"
+                value={sessionTitle}
+                onChange={(e) => setSessionTitle(e.target.value)}
+                className={`max-w-xs ${isRunning ? "hidden" : "relative"} transition-all duration-1000`}
+                placeholder="What are you working on?"
+                classNames={{
+                  input: "text-[12px]",
+                  label: "absolute hidden top-0 left-0",
+                  base: "data-[has-label=true]:mt-0"
+                }}
+              />
+            )}
+            {/* Timer Controls */}
+            <div className="flex gap-3">
+              {isRunning ? (
+                <div className="flex gap-3">
+                  <Button size="sm" color="warning" onPress={stopTimer}>Pause</Button>
+                  <Button size="sm" color="danger" onPress={resetTimer}>Reset</Button>
+                </div>
+              ) : (
+                <Button size="sm" color="success" onPress={startTimer}>Start</Button>
+              )}
+            </div>
           </div>
-          
-          {/* Settings Button */}
-          <Button 
-            variant="ghost" 
-            onPress={() => setIsSettingsOpen(true)}
-            className="mt-auto mb-4"
-          >
-            Settings
-          </Button>
-        </div>
         
-        {/* Settings Dialog */}
-{/* Settings Modal */}
-      {isSettingsOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-md">
+        {/* Settings Modal */}
+        {isSettingsOpen && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[1000]">
+            <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-md z-[1010]">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-bold">Timer Settings</h3>
               <button onClick={() => setIsSettingsOpen(false)} className="text-gray-500">✕</button>
@@ -334,25 +343,21 @@ export default function TimerModule() {
         </div>
       )}
         
-        {/* Session Completion Dialog */}
         {/* Session Completion Modal */}
         {showCompletionDialog && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-md">
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[1000]">
+            <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-md z-[1010]">
               <div className="flex justify-between items-center mb-4">
                 <h3 className="text-lg font-bold">Focus Session Completed!</h3>
                 <button onClick={() => setShowCompletionDialog(false)} className="text-gray-500">✕</button>
-              </div>
-              
+              </div>              
               <div className="flex flex-col items-center gap-4">
                 <p>Great job completing your focus session!</p>
-                
                 <div className="flex justify-between w-full p-4 bg-gray-100 dark:bg-gray-800 rounded-lg">
                   <div className="text-center">
                     <p className="text-sm text-gray-500">Duration</p>
                     <p className="font-bold text-xl">{Math.floor(calculateSessionDuration() / 60)} min</p>
                   </div>
-                  
                   <div className="text-center">
                     <p className="text-sm text-gray-500">Coins Earned</p>
                     <p className="font-bold text-xl text-amber-500">+{Math.floor(calculateSessionDuration() / 60)} 🪙</p>

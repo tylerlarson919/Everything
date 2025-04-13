@@ -39,7 +39,7 @@ type FirestoreTaskData = {
     startTime?: string;
     completed?: boolean;
     [key: string]: any;
-  };
+  }; 
 
 // Define TypeScript interface for player state
 interface PlayerState {
@@ -52,6 +52,7 @@ interface PlayerState {
   xp: number;
   level: number;
   selectedCharacter: string;
+  selectedLevel: string;
   health: number;
   playtime: number;
   tasks: Array<{ 
@@ -81,6 +82,7 @@ interface PlayerState {
   subtractCoins: (amount: number) => void;
   addXP: (amount: number) => void;
   setSelectedCharacter: (character: string) => void;
+  setSelectedLevel: (level: string) => void;
   setHealth: (health: number) => void;
   incrementPlaytime: (seconds: number) => void;
   addTask: (task: { 
@@ -110,6 +112,7 @@ export const usePlayerStore = create<PlayerState>()(
       xp: 0,
       level: 1,
       selectedCharacter: 'default',
+      selectedLevel: 'default',
       health: 100,
       playtime: 0,
       tasks: [],
@@ -165,6 +168,7 @@ export const usePlayerStore = create<PlayerState>()(
               xp: data.xp || 0,
               level: data.level || 1,
               selectedCharacter: data.selectedCharacter || 'default',
+              selectedLevel: data.selectedLevel || 'default',
               health: data.health || 100,
               playtime: data.playtime || 0,
             });
@@ -192,6 +196,7 @@ export const usePlayerStore = create<PlayerState>()(
               xp: 0,
               level: 1,
               selectedCharacter: 'default',
+              selectedLevel: 'default',
               health: 100,
               playtime: 0,
               createdAt: serverTimestamp(),
@@ -216,6 +221,7 @@ export const usePlayerStore = create<PlayerState>()(
                         xp: data.xp || state.xp,
                         level: data.level || state.level,
                         selectedCharacter: data.selectedCharacter || state.selectedCharacter,
+                        selectedLevel: data.selectedLevel || state.selectedLevel,
                         health: data.health || state.health,
                         playtime: data.playtime || state.playtime,
                     }));
@@ -279,6 +285,7 @@ export const usePlayerStore = create<PlayerState>()(
             xp: state.xp,
             level: state.level,
             selectedCharacter: state.selectedCharacter,
+            selectedLevel: state.selectedLevel,
             health: state.health,
             playtime: state.playtime,
             lastUpdated: serverTimestamp(),
@@ -327,6 +334,10 @@ export const usePlayerStore = create<PlayerState>()(
       
       setSelectedCharacter: (character) => {
         set({ selectedCharacter: character });
+        get().syncToFirebase();
+      },
+      setSelectedLevel: (level) => {
+        set({ selectedLevel: level });
         get().syncToFirebase();
       },
       
@@ -392,6 +403,7 @@ export const usePlayerStore = create<PlayerState>()(
         xp: state.xp,
         level: state.level,
         selectedCharacter: state.selectedCharacter,
+        selectedLevel: state.selectedLevel,
         health: state.health,
         playtime: state.playtime,
         pomodoroSessions: state.pomodoroSessions,

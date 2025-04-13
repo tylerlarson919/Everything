@@ -8,8 +8,6 @@ import {Tooltip} from "@heroui/tooltip";
 import TimerModule from "@/components/timer-module";
 import { useFirestore } from "../config/FirestoreContext";
 import { useEffect } from "react";
-import { Character } from "../config/types";
-import { readSelectedCharacter } from "@/config/firebase";
 import { gameCharacters } from "@/config/characters";
 import { usePlayerStore } from '../stores/playerStore';
 
@@ -43,16 +41,19 @@ export default function StatsModule() {
       <div className="w-full h-full flex flex-col lg:flex-row items-center justify-start gap-4 max-w-[1417px]">
         <Card className="w-full h-full lg:max-w-[746px] min-w-[550px]">
           <CardBody className="w-full flex flex-row items-start relative min-h-[430px] overflow-hidden z-[0]">
-            <div className="absolute right-2 bottom-0 w-auto z-[1]">
+            <div className="absolute right-2 bottom-20 w-auto z-[1]">
               <Tooltip content="Click to change character" offset={-50}>
                 <button className="flex w-full h-full" onClick={characterSelectionClick} >
                   <Image
                     alt="User Avatar"
-                    className={`w-auto h-[380px] ${isImageLoaded ? 'opacity-100' : 'opacity-0'}`}
+                    className={`w-auto h-[300px] ${isImageLoaded ? 'opacity-100' : 'opacity-0'}`}
+                    style={{ 
+                      imageRendering: 'pixelated',
+                      transform: 'scale(2.5)'
+                    }}
                     isBlurred
                     src={characterImg}
                     onLoad={handleImageLoad}
-                    
                   />
                 </button>
               </Tooltip>

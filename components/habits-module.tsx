@@ -57,7 +57,7 @@ export default function HabitsModule() {
   };
 
   return (
-    <div className="w-full h-full flex flex-col items-center justify-center">
+    <div className="w-full h-full flex flex-col items-center justify-center z-first">
       <Card className="w-full h-full bg-transparent shadow-none">
         <CardBody className="w-full p-0">
           <div className="flex flex-row gap-2 items-center justify-between">

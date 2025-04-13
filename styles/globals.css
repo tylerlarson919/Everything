@@ -53,3 +53,7 @@ body {
     scrollbar-width: thin;
     scrollbar-color: #333 #000; /* Thumb color, Track color */
   }
+
+  .z-first {
+    z-index: 0;
+  }

@@ -43,6 +43,13 @@ export interface Habit {
     taskId?: string[];
   }
 
+  export interface Animation {
+    row: number;
+    frames: number;
+    frameWidth: number;
+    frameHeight: number;
+  }
+
   export interface Character {
     id: string;
     class: string;
@@ -54,10 +61,23 @@ export interface Habit {
       health: number;
     };
     attack: string;
-    attackPath: string;
     specialAbility: string;
-    specialAbilityPath: string;
-    MoveType: 'walk' | 'run' | 'both';
+    animations: Record<string, Animation>;
+  }
+  export interface layerPaths {
+    layer1: string;
+    layer2: string;
+    layer3: string;
+    layer4: string;
+  }
+  type TextColorOption = "light" | "dark";
+
+  export interface Level {
+    id: string;
+    name: string;
+    textColor: TextColorOption;
+    folderPath: string;
+    layerPaths: layerPaths;
   }
 
   export interface Player {

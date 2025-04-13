@@ -5,19 +5,21 @@ import { gameCharacters } from '../../config/characters';
 import { Button } from '@heroui/button';
 import LeftCaret from '@/components/icons/left-caret';
 import RightCaret from '@/components/icons/right-caret';
-import PlayIcon from '@/components/icons/play';
 import CharacterAnimation from '@/components/characterAnimations';
 import { useFirestore } from "../../config/FirestoreContext";
 import { writeSelectedCharacter } from '../../config/firebase';
 import { useRouter } from "next/navigation";
+import { usePlayerStore } from '../../stores/playerStore';
+import Image from 'next/image';
 
 const CharacterSelection = () => {
   const { user, items, loading } = useFirestore();
   const [characters, setCharacters] = useState<Character[]>([]);
   const [selectedCharacter, setSelectedCharacter] = useState<Character | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [currentAnimation, setCurrentAnimation] = useState<'idle' | 'run' | 'walk' | 'attack' | 'special' | null>('idle');
+  const [currentAnimation, setCurrentAnimation] = useState<'idle' | 'run' | 'walk' | 'attack_1' | 'attack_2' | 'jump' | 'special' | null>('idle');
   const router = useRouter();
+  const playerStore = usePlayerStore();
 
   // Fetch available characters on component mount
   useEffect(() => {
@@ -54,12 +56,12 @@ const CharacterSelection = () => {
   };
 
   const handleSelectCharacter = async () => {
-    if (!selectedCharacter || !user) return; // Ensure selectedCharacter and user are defined
-
+    if (!selectedCharacter || !user) return; 
+    
     try {
-      await writeSelectedCharacter(user.uid, selectedCharacter.id); // Write to Firestore
+      // Update the character in the player store instead of directly writing to Firestore
+      playerStore.setSelectedCharacter(selectedCharacter.id);
       router.push("/");
-      // You can add additional logic here, like navigating to another page
     } catch (error) {
       console.error("Error saving selected character:", error);
     }
@@ -67,10 +69,10 @@ const CharacterSelection = () => {
 
   const playAttack = () => {
     if (!selectedCharacter) return;
-    setCurrentAnimation('attack');
+    setCurrentAnimation('attack_1'); 
     setTimeout(() => {
-      setCurrentAnimation('idle'); // Reset to idle after attack animation
-    }, 5000); // Adjust the duration 
+      setCurrentAnimation('idle');
+    }, 5000);
   };
   
   const playAbility = () => {
@@ -104,7 +106,7 @@ const CharacterSelection = () => {
   }
 
   return (
-    <div className="flex flex-col items-center p-8 w-screen bg-cover bg-center">
+    <div className="flex flex-col items-center p-8 w-screen bg-cover bg-center justify-start">
      {selectedCharacter && (
 
         <div className="flex flex-col w-full max-w-6xl">
@@ -175,7 +177,32 @@ const CharacterSelection = () => {
               </div>
             </div>
           </div>
+        <div className="w-full max-w-6xl mt-8">
+          <h2 className="text-2xl font-bold mb-4">Characters</h2>
+          <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+            {characters.map((character) => (
+              <div 
+                key={character.id} 
+                onClick={() => setSelectedCharacter(character)}
+                className={`cursor-pointer p-4 rounded-lg transition-all ${
+                  selectedCharacter?.id === character.id 
+                    ? 'bg-primary-100 dark:bg-dark1' 
+                    : 'bg-gray-100 dark:bg-dark2 hover:bg-gray-200 dark:hover:bg-dark3'
+                }`}
+              >
+                <div className="h-24 flex justify-center items-center overflow-hidden">
+                  <img 
+                    src={`${character.folderPath}/profile.png`}
+                    alt={character.name}
+                    className="h-full w-auto object-contain"
+                  />
+                </div>
+                <p className="text-center mt-2 font-medium">{character.name}</p>
+              </div>
+            ))}
+          </div>
         </div>
+      </div>
       )}
     </div>
   );
