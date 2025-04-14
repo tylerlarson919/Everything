@@ -22,18 +22,41 @@ export default function TimerAnimationModule({ isRunning }: TimerAnimationModule
   const { selectedCharacter, selectedLevel } = usePlayerStore();
   const [inBattle, setInBattle] = useState(false);
   const [characterAnimation, setCharacterAnimation] = useState('idle');
+  const [battlePosition, setBattlePosition] = useState(false);
+  const [layerImageWidths, setLayerImageWidths] = useState<{[key: string]: number}>({});
+  const [imagesLoaded, setImagesLoaded] = useState(false);
+  const [playerMovedForBattle, setPlayerMovedForBattle] = useState(false);
+
   // Get the character data and level data
   const character = gameCharacters.find(c => c.id === selectedCharacter) || gameCharacters[0];
   const level = levels.find(l => l.id === selectedLevel) || levels.find(l => l.id === '1') || levels[0];
-  // References for animation frames
   const characterRef = useRef<HTMLDivElement>(null);
   const animationFrameRef = useRef<number>(0);
   const frameCountRef = useRef<number>(0);
-  // References for layer positions
   const layerRefs = useRef<{[key: string]: HTMLDivElement | null}>({});
-  // Positions for parallax layers
   const positionsRef = useRef<{[key: string]: number}>({});
   const animationSpeedRef = useRef<number>(100); // milliseconds per frame
+
+// useEffect to preload images and get their natural widths
+  useEffect(() => {
+    const layerWidths: {[key: string]: number} = {};
+    const imagesToLoad = Object.entries(level.layerPaths).length;
+    let loadedCount = 0;
+    
+    Object.entries(level.layerPaths).forEach(([layerKey, path]) => {
+      const img = new Image();
+      img.src = `${level.folderPath}${path}`;
+      img.onload = () => {
+        layerWidths[layerKey] = img.naturalWidth;
+        loadedCount++;
+        if (loadedCount === imagesToLoad) {
+          setLayerImageWidths(layerWidths);
+          setImagesLoaded(true);
+        }
+      };
+    });
+  }, [level]);
+
   // Initialize positions for all layers
   useEffect(() => {
     // Reset positions when level changes
@@ -51,23 +74,32 @@ export default function TimerAnimationModule({ isRunning }: TimerAnimationModule
     }
   }, [isRunning, inBattle]);
 
-  // Add handler for battle system animation changes
-  const handlePlayerAnimationChange = useCallback((animation: string) => {
+  // For battle system animation changes
+  const handlePlayerAnimationChange = useCallback((animation: string, inBattlePosition: boolean = false) => {
     setCharacterAnimation(animation);
+    setBattlePosition(inBattlePosition);
   }, []);
 
-  // Update character animation effect to use the new animation state
+  const handlePlayerPositionChange = useCallback((shouldMove: boolean) => {
+    setPlayerMovedForBattle(shouldMove);
+  }, []);
+
+  // Character animation effect that uses the animation state
   useEffect(() => {
     const animation = character.animations[characterAnimation];
-    if (!animation || !characterRef.current) return;
+    if (!animation ||  !characterRef.current) return;
 
     const { frames, frameWidth, frameHeight, row } = animation;
     
-    // Adjust animation speed based on type
-    if (characterAnimation === 'attack_1' || characterAnimation === 'attack_2' || characterAnimation === 'special') {
-      animationSpeedRef.current = 80; // Faster for attacks
+    // Better animation speed based on type
+    if (characterAnimation === 'attack_1' || characterAnimation === 'attack_2') {
+      animationSpeedRef.current = 70; // Faster for normal attacks
+    } else if (characterAnimation === 'special') {
+      animationSpeedRef.current = 60; // Even faster for special
     } else if (characterAnimation === 'hurt') {
-      animationSpeedRef.current = 150; // Slower for hurt
+      animationSpeedRef.current = 120; // Slower for hurt
+    } else if (characterAnimation === 'run') {
+      animationSpeedRef.current = 90; // Good pace for running
     } else {
       animationSpeedRef.current = 100; // Default speed
     }
@@ -79,39 +111,61 @@ export default function TimerAnimationModule({ isRunning }: TimerAnimationModule
       if (!characterRef.current) return;
       
       // Update character sprite position
-      const position = -(frameCountRef.current % frames) * frameWidth;
+      const frameIndex = frameCountRef.current % frames;
+      const position = -frameIndex * frameWidth;
       const rowPosition = -row * frameHeight;
       characterRef.current.style.backgroundPosition = `${position}px ${rowPosition}px`;
       
-      // Increment frame count
-      frameCountRef.current = (frameCountRef.current + 1) % frames;
+    // Increment frame count
+    frameCountRef.current++;
+
+    // For attack animations, automatically return to idle when complete
+    if (frameCountRef.current >= frames && 
+      (characterAnimation === 'attack_1' || 
+      characterAnimation === 'attack_2' || 
+      characterAnimation === 'special' || 
+      characterAnimation === 'hurt')) {
+    // Don't reset during battle sequences - the battle system controls this
+    if (!inBattle) {
+      setCharacterAnimation(isRunning ? 'run' : 'idle');
+    }
+    frameCountRef.current = 0;
+    } else if (frameCountRef.current >= frames) {
+    frameCountRef.current = 0;
+    }
+
     }, animationSpeedRef.current);
     
     return () => clearInterval(interval);
-  }, [character, characterAnimation]);
+  }, [character, characterAnimation, inBattle]);
 
   // Parallax animation for background
   useEffect(() => {
-    if (!isRunning || inBattle) return;
+    if (!isRunning || inBattle || !imagesLoaded) return;
     
     const animateBackground = () => {
       const layers = Object.keys(level.layerPaths);
       
       layers.forEach((layerKey) => {
         const layerRef = layerRefs.current[layerKey];
-        if (!layerRef) return;
+        if (!layerRef || !layerImageWidths[layerKey]) return;
         
         const layerNumber = parseInt(layerKey.replace("layer", ""));
         const isFloor = level.layerPaths[layerKey as keyof typeof level.layerPaths] === "floor.png";
         
-        // Improved speed calculation for smoother parallax
-        const speed = isFloor ? 3 : 0.5 + (layerNumber * 0.5);
+        // Improved speed calculation
+        const speed = isFloor ? 1.2 : 0.2 + (layerNumber * 0.1);
         
-        // Update position
-        positionsRef.current[layerKey] = (positionsRef.current[layerKey] - speed) % window.innerWidth;
+        // Update position without resetting abruptly
+        positionsRef.current[layerKey] -= speed;
         
-        // Apply position
-        layerRef.style.backgroundPositionX = `${positionsRef.current[layerKey]}px`;
+        // Use only a single image for the background
+        const firstImagePosition = positionsRef.current[layerKey];
+        
+        layerRef.style.backgroundImage = `url("${level.folderPath}${level.layerPaths[layerKey as keyof typeof level.layerPaths]}")`;
+        layerRef.style.backgroundSize = `auto 100%`;
+        layerRef.style.backgroundPosition = `${firstImagePosition}px 0px`;
+        layerRef.style.backgroundRepeat = 'repeat-x';
       });
       
       animationFrameRef.current = requestAnimationFrame(animateBackground);
@@ -124,37 +178,27 @@ export default function TimerAnimationModule({ isRunning }: TimerAnimationModule
         cancelAnimationFrame(animationFrameRef.current);
       }
     };
-  }, [isRunning, level, inBattle]);
+  }, [isRunning, level, inBattle, imagesLoaded, layerImageWidths]);
 
   // Get all layer keys from the level
   const layerKeys = Object.keys(level.layerPaths);
   
   // Sort layers to ensure floor.png is in the correct z-index position
   const sortedLayers = [...layerKeys].sort((a, b) => {
-    const aPath = level.layerPaths[a as keyof typeof level.layerPaths];
-    const bPath = level.layerPaths[b as keyof typeof level.layerPaths];
-    
-    // If one is floor.png, determine its position based on layer key number
-    if (aPath === "floor.png" && bPath !== "floor.png") {
-      const aNum = parseInt(a.replace("layer", ""));
-      const bNum = parseInt(b.replace("layer", ""));
-      return aNum - bNum;
-    }
-    if (bPath === "floor.png" && aPath !== "floor.png") {
-      const aNum = parseInt(a.replace("layer", ""));
-      const bNum = parseInt(b.replace("layer", ""));
-      return aNum - bNum;
-    }
-    
-    // Otherwise sort by layer number
+    // Extract layer numbers for proper numeric sorting
     const aNum = parseInt(a.replace("layer", ""));
     const bNum = parseInt(b.replace("layer", ""));
     return aNum - bNum;
   });
-
-  const floorLayerIndex = sortedLayers.findIndex(layerKey => 
-    level.layerPaths[layerKey as keyof typeof level.layerPaths] === "floor.png"
-  );
+  
+  // Find the floor layer for proper z-index calculation
+  const floorLayerKey = Object.entries(level.layerPaths).find(
+    ([key, path]) => path === "floor.png"
+  )?.[0];
+  
+  const floorLayerIndex = floorLayerKey 
+    ? sortedLayers.indexOf(floorLayerKey)
+    : Math.floor(sortedLayers.length / 2); // Default if no floor found
   
   // Calculate character z-index before the return statement
   const characterZIndex = floorLayerIndex !== -1 ? floorLayerIndex + 2 : 100;  
@@ -172,12 +216,13 @@ export default function TimerAnimationModule({ isRunning }: TimerAnimationModule
           <div 
             key={`${level.id}-${layerKey}`}
             ref={(el) => { layerRefs.current[layerKey] = el; }}
-            className="absolute inset-0 w-full h-full bg-repeat-x"
+            className="absolute inset-0 w-full h-full"
             style={{
-              backgroundImage: `url(${level.folderPath}${layerPath})`,
+              backgroundImage: imagesLoaded ? 
+                `url("${level.folderPath}${layerPath}")` : 
+                `url("${level.folderPath}${layerPath}")`,
               backgroundSize: 'auto 100%',
-              backgroundRepeat: 'repeat-x',
-              backgroundPositionX: '0px',
+              backgroundRepeat: 'no-repeat',
               zIndex: layerZIndex,
               imageRendering: 'pixelated',
               willChange: 'background-position',
@@ -191,26 +236,33 @@ export default function TimerAnimationModule({ isRunning }: TimerAnimationModule
       {/* Character */}
       <div 
         ref={characterRef}
-        className="absolute bottom-[23px] transform -translate-x-1/2 transition-all duration-300"
+        className="absolute left-0 right-0 mx-auto bottom-[22px] transition-[left,transform] duration-[700ms] ease-in-out"
         style={{
-          width: `${character.animations[characterAnimation]?.frameWidth || 128}px`,
-          height: `${character.animations[characterAnimation]?.frameHeight || 128}px`,
+          width: `${character.animations[characterAnimation]?.frameWidth}px`,
+          height: `${character.animations[characterAnimation]?.frameHeight}px`,
           backgroundImage: `url(${character.folderPath}/player.png)`,
           backgroundRepeat: 'no-repeat',
-          backgroundSize: 'auto',
+          backgroundPosition: '0px 0px',
           imageRendering: 'pixelated',
+          position: 'absolute',
+          zIndex: characterZIndex,
+          left: playerMovedForBattle ? '-10%' : '0%',
           transform: 'scale(1.5)',
           transformOrigin: 'bottom center',
-          zIndex: characterZIndex,
-          left: inBattle ? '40%' : '50%',
+          backgroundSize: 'auto',
         }}
       />
       <EnemyBattleSystem 
         isRunning={isRunning && !inBattle}
         playerCharacter={character}
         onBattleStart={() => setInBattle(true)}
-        onBattleEnd={() => setInBattle(false)}
+        onBattleEnd={() => {
+          setInBattle(false);
+          // Ensure character returns to running when battle ends
+          setCharacterAnimation(isRunning ? 'run' : 'idle');
+        }}
         onPlayerAnimationChange={handlePlayerAnimationChange}
+        onPlayerPositionChange={handlePlayerPositionChange}
       />
     </div>
   );
