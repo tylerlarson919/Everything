@@ -67,17 +67,31 @@ export interface Habit {
   export interface layerPaths {
     layer1: string;
     layer2: string;
-    layer3: string;
-    layer4: string;
+    layer3?: string;
+    layer4?: string;
+    layer5?: string;
+    layer6?: string;
+    layer7?: string;
+    layer8?: string;
+    layer9?: string;
+    layer10?: string;
   }
   type TextColorOption = "light" | "dark";
 
   export interface Level {
     id: string;
+    lvlReq: number;
     name: string;
     textColor: TextColorOption;
     folderPath: string;
     layerPaths: layerPaths;
+  }
+
+  export interface Enemy {
+    id: string;
+    name: string;
+    folderPath: string;
+    animations: Record<string, Animation>;
   }
 
   export interface Player {

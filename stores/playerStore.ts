@@ -97,7 +97,7 @@ interface PlayerState {
   }) => void;
   completeTask: (taskId: string) => void;
   uncompleteTask: (taskId: string) => void;
-
+ 
 }
 
 export const usePlayerStore = create<PlayerState>()(

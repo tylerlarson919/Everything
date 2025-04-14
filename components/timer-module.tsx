@@ -10,7 +10,7 @@ import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 import { firestore } from "../config/firebase";
 import SettingsIcon from "./icons/settings";
 import { relative } from "path";
-
+import LevelSelectScreen from "./level-select-screen";
 // Timer modes
 enum TimerMode {
   POMODORO = "pomodoro",
@@ -41,8 +41,9 @@ export default function TimerModule() {
   const [sessionTitle, setSessionTitle] = useState("");
   const [sessionNotes, setSessionNotes] = useState("");
   const [showCompletionDialog, setShowCompletionDialog] = useState(false);
-  
+  const [showLevelSelect, setShowLevelSelect] = useState(false);
   const timerRef = useRef<number | null>(null);
+  const lastTickRef = useRef<number>(0);
   const sessionStartTimeRef = useRef<Date | null>(null);
 
   // Reset timer when mode changes
@@ -60,36 +61,52 @@ export default function TimerModule() {
     return `${mins}:${secs}`;
   };
 
-  // Start the timer
+  // Start the timer with animation sync
   const startTimer = () => {
     if (!sessionStartTimeRef.current) {
       sessionStartTimeRef.current = new Date();
     }
     
     setIsRunning(true);
-    timerRef.current = window.setInterval(() => {
-      setTimeRemaining((prevTime) => {
-        if (prevTime <= 1) {
-          completeTimer();
-          return 0;
-        }
-        return prevTime - 1;
-      });
-    }, 1000);
+    
+    // Use requestAnimationFrame for smoother animation sync
+    const startTime = Date.now();
+    const initialTime = timeRemaining;
+    
+    const updateTimer = () => {
+      const elapsed = Math.floor((Date.now() - startTime) / 1000);
+      const newTime = Math.max(0, initialTime - elapsed);
+      
+      setTimeRemaining(newTime);
+      
+      if (newTime <= 0) {
+        completeTimer();
+        return;
+      }
+      
+      timerRef.current = requestAnimationFrame(updateTimer);
+    };
+    
+    timerRef.current = requestAnimationFrame(updateTimer);
   };
 
   // Stop the timer
   const stopTimer = () => {
     if (timerRef.current !== null) {
-      clearInterval(timerRef.current);
+      cancelAnimationFrame(timerRef.current);
       timerRef.current = null;
     }
     setIsRunning(false);
   };
 
-  // Handle timer completion
+  // Handle timer completion with animation and sound feedback
   const completeTimer = () => {
     stopTimer();
+    
+    // Play completion sound
+    const sound = new Audio(mode === TimerMode.POMODORO ? '/sounds/work-complete.mp3' : '/sounds/break-complete.mp3');
+    sound.volume = 0.5;
+    sound.play().catch(err => console.log('Audio playback error:', err));
     
     // If we completed a work session (pomodoro)
     if (mode === TimerMode.POMODORO) {
@@ -113,6 +130,18 @@ export default function TimerModule() {
       
       // Log session to Firestore and award rewards
       logCompletedSession(sessionDuration);
+      
+      // Trigger browser notification if supported and page is not visible
+      if (document.visibilityState !== 'visible' && 'Notification' in window) {
+        if (Notification.permission === 'granted') {
+          new Notification('Focus Session Complete!', {
+            body: 'Great job! Time for a break.',
+            icon: '/favicon.ico'
+          });
+        } else if (Notification.permission !== 'denied') {
+          Notification.requestPermission();
+        }
+      }
     } else {
       // If we completed a break, go back to pomodoro
       setMode(TimerMode.POMODORO);
@@ -208,9 +237,16 @@ export default function TimerModule() {
 
   return (
     <Card className="w-full">
+      {showLevelSelect ? (
+        <LevelSelectScreen onConfirm={() => setShowLevelSelect(false)} />
+      ) : (
       <CardBody className="w-full flex flex-col relative min-h-[430px] overflow-hidden z-[0] justify-start items-center gap-10">
           <div className="w-full h-full absolute bottom-0 left-0">
-            <TimerAnimationModule isRunning={isRunning} />
+            <TimerAnimationModule 
+              isRunning={isRunning} 
+              progress={(settings[mode] - timeRemaining) / settings[mode]}
+              mode={mode}
+            />
           </div>
           <div className="flex flex-col justify-center items-center w-full z-[20]">
             <button onClick={() => setIsSettingsOpen(true)}>
@@ -229,7 +265,7 @@ export default function TimerModule() {
             
             {/* Session Counter (only in Pomodoro mode) */}
             {mode === TimerMode.POMODORO && (
-              <div className={`text-gray-600 dark:text-gray-400 ${isRunning ? "hidden" : "relative"} transition-all duration-1000`}>
+              <div className={`text-gray-600 dark:text-gray-400 ${isRunning ? "relative" : "hidden"} transition-all duration-1000`}>
                 Session {sessions + 1} • Total Focus Time: {Math.floor(totalSessionTime / 60)} minutes
               </div>
             )}
@@ -240,7 +276,10 @@ export default function TimerModule() {
               size="sm"
               onSelectionChange={(key: any) => setMode(key as TimerMode)}
               classNames={{
-                base: "absolute -top-[43px]"
+                base: "absolute -top-[43px] ",
+                tabList: "bg-black/20 rounded-lg backdrop-blur-sm ",
+                tab: "bg-none backdrop-blur-none",
+                cursor: "dark:bg-black/40 bg-black/40",
               }}
             >
               <Tab key={TimerMode.POMODORO} title="Focus" />
@@ -260,8 +299,9 @@ export default function TimerModule() {
                 placeholder="What are you working on?"
                 classNames={{
                   input: "text-[12px]",
-                  label: "absolute hidden top-0 left-0",
-                  base: "data-[has-label=true]:mt-0"
+                  label: "absolute hidden top-0 left-0 ",
+                  base: "data-[has-label=true]:mt-0 ",
+                  inputWrapper: "dark:bg-black/40 bg-black/40 group-data-[focus=true]:bg-black/60",
                 }}
               />
             )}
@@ -334,10 +374,18 @@ export default function TimerModule() {
                   }}
                 />
               </div>
-            </div>
-            
-            <div className="mt-6 flex justify-end">
-              <Button onPress={() => setIsSettingsOpen(false)}>Close</Button>
+              <div className="mt-6 flex justify-between">
+                <Button color="secondary" onPress={() => {
+                  setIsSettingsOpen(false);
+                  setShowLevelSelect(true);
+                  if (isRunning) {
+                    stopTimer();
+                  }
+                }}>
+                  Return to Level Select
+                </Button>
+                <Button onPress={() => setIsSettingsOpen(false)}>Close</Button>
+              </div>
             </div>
           </div>
         </div>
@@ -385,6 +433,7 @@ export default function TimerModule() {
           </div>
         )}
       </CardBody>
+      )}
     </Card>
   );
 }
