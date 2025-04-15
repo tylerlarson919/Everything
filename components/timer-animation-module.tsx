@@ -26,6 +26,7 @@ export default function TimerAnimationModule({ isRunning }: TimerAnimationModule
   const [layerImageWidths, setLayerImageWidths] = useState<{[key: string]: number}>({});
   const [imagesLoaded, setImagesLoaded] = useState(false);
   const [playerMovedForBattle, setPlayerMovedForBattle] = useState(false);
+  const [characterZIndexModifier, setCharacterZIndexModifier] = useState(0);
 
   // Get the character data and level data
   const character = gameCharacters.find(c => c.id === selectedCharacter) || gameCharacters[0];
@@ -141,6 +142,23 @@ export default function TimerAnimationModule({ isRunning }: TimerAnimationModule
 
   // Parallax animation for background
   useEffect(() => {
+    // Initialize all layers properly on load, regardless of running state
+    if (imagesLoaded) {
+      const layers = Object.keys(level.layerPaths);
+      
+      layers.forEach((layerKey) => {
+        const layerRef = layerRefs.current[layerKey];
+        if (!layerRef || !layerImageWidths[layerKey]) return;
+        
+        // Always set the initial background properties
+        layerRef.style.backgroundImage = `url("${level.folderPath}${level.layerPaths[layerKey as keyof typeof level.layerPaths]}")`;
+        layerRef.style.backgroundSize = `auto 100%`;
+        layerRef.style.backgroundPosition = `${positionsRef.current[layerKey]}px 0px`;
+        layerRef.style.backgroundRepeat = 'repeat-x';
+      });
+    }
+    
+    // Only animate when running
     if (!isRunning || inBattle || !imagesLoaded) return;
     
     const animateBackground = () => {
@@ -159,13 +177,7 @@ export default function TimerAnimationModule({ isRunning }: TimerAnimationModule
         // Update position without resetting abruptly
         positionsRef.current[layerKey] -= speed;
         
-        // Use only a single image for the background
-        const firstImagePosition = positionsRef.current[layerKey];
-        
-        layerRef.style.backgroundImage = `url("${level.folderPath}${level.layerPaths[layerKey as keyof typeof level.layerPaths]}")`;
-        layerRef.style.backgroundSize = `auto 100%`;
-        layerRef.style.backgroundPosition = `${firstImagePosition}px 0px`;
-        layerRef.style.backgroundRepeat = 'repeat-x';
+        layerRef.style.backgroundPosition = `${positionsRef.current[layerKey]}px 0px`;
       });
       
       animationFrameRef.current = requestAnimationFrame(animateBackground);
@@ -222,12 +234,13 @@ export default function TimerAnimationModule({ isRunning }: TimerAnimationModule
                 `url("${level.folderPath}${layerPath}")` : 
                 `url("${level.folderPath}${layerPath}")`,
               backgroundSize: 'auto 100%',
-              backgroundRepeat: 'no-repeat',
+              backgroundRepeat: 'repeat-x',
               zIndex: layerZIndex,
               imageRendering: 'pixelated',
               willChange: 'background-position',
               transform: 'translate3d(0, 0, 0)',
               height: '100%',
+              width: '100%',
             }}
           />
         );
@@ -258,11 +271,16 @@ export default function TimerAnimationModule({ isRunning }: TimerAnimationModule
         onBattleStart={() => setInBattle(true)}
         onBattleEnd={() => {
           setInBattle(false);
+          // Reset z-index modifier when battle ends
+          setCharacterZIndexModifier(0);
           // Ensure character returns to running when battle ends
           setCharacterAnimation(isRunning ? 'run' : 'idle');
         }}
         onPlayerAnimationChange={handlePlayerAnimationChange}
         onPlayerPositionChange={handlePlayerPositionChange}
+        onPlayerZIndexChange={(isOnTop) => {
+          setCharacterZIndexModifier(isOnTop ? 2 : 0);
+        }}
       />
     </div>
   );

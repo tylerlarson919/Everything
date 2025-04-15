@@ -16,6 +16,7 @@ interface EnemyBattleSystemProps {
   onBattleEnd: () => void;
   onPlayerAnimationChange?: (animation: string, inBattlePosition?: boolean) => void;
   onPlayerPositionChange?: (shouldMove: boolean) => void; // Add this line
+  onPlayerZIndexChange?: (isOnTop: boolean) => void;
 }
 
 export default function EnemyBattleSystem({
@@ -24,13 +25,14 @@ export default function EnemyBattleSystem({
   onBattleStart,
   onBattleEnd,
   onPlayerAnimationChange,
-  onPlayerPositionChange // Add this
+  onPlayerPositionChange, // Add this
+  onPlayerZIndexChange    // Add this
 }: EnemyBattleSystemProps) {
   // Replace state to be simpler
   const [currentEnemy, setCurrentEnemy] = useState<Enemy | null>(null);
   const [enemyState, setEnemyState] = useState({
     isActive: false,
-    position: window.innerWidth,
+    position: 120,
     animation: 'walk',
     frameCount: 0
   });
@@ -43,6 +45,7 @@ export default function EnemyBattleSystem({
   const lastTimeRef = useRef(0);
   const animationActiveRef = useRef(false);
   const scheduleNextSpawnRef = useRef<() => void>(() => {});
+  const [playerOnTop, setPlayerOnTop] = useState(false);
 
   // Add reference to track battle state
   const battleInProgressRef = useRef(false);
@@ -68,7 +71,7 @@ export default function EnemyBattleSystem({
     setCurrentEnemy(enemy);
     setEnemyState({
       isActive: true,
-      position: 100,
+      position: 120,
       animation: 'walk',
       frameCount: 0
     });
@@ -100,27 +103,27 @@ export default function EnemyBattleSystem({
     // Better timed battle sequence with randomized attacks
     const battleSequence = [
       // Starting poses
-      { delay: 500, playerAnim: 'idle', enemyAnim: 'idle', inBattlePosition: true },
+      { delay: 300, playerAnim: 'idle', enemyAnim: 'idle', inBattlePosition: true, playerOnTop: false },
       
-      // Player's first attack
-      { delay: 1000, playerAnim: randomPlayerAttack1, enemyAnim: null, inBattlePosition: true },
-      { delay: 600, playerAnim: null, enemyAnim: 'hurt', inBattlePosition: true },
-      { delay: 800, playerAnim: 'idle', enemyAnim: 'idle', inBattlePosition: true },
+      // Player's first attack - player on top
+      { delay: 700, playerAnim: randomPlayerAttack1, enemyAnim: null, inBattlePosition: true, playerOnTop: true },
+      { delay: 400, playerAnim: null, enemyAnim: 'hurt', inBattlePosition: true, playerOnTop: true },
+      { delay: 500, playerAnim: 'idle', enemyAnim: 'idle', inBattlePosition: true, playerOnTop: false },
       
-      // Enemy's attack
-      { delay: 1000, playerAnim: null, enemyAnim: randomEnemyAttack, inBattlePosition: true },
-      { delay: 600, playerAnim: 'hurt', enemyAnim: null, inBattlePosition: true },
-      { delay: 800, playerAnim: 'idle', enemyAnim: 'idle', inBattlePosition: true },
+      // Enemy's attack - enemy on top
+      { delay: 700, playerAnim: null, enemyAnim: randomEnemyAttack, inBattlePosition: true, playerOnTop: false },
+      { delay: 400, playerAnim: 'hurt', enemyAnim: null, inBattlePosition: true, playerOnTop: false },
+      { delay: 500, playerAnim: 'idle', enemyAnim: 'idle', inBattlePosition: true, playerOnTop: false },
       
-      // Player's second attack
-      { delay: 1200, playerAnim: randomPlayerAttack2, enemyAnim: null, inBattlePosition: true },
-      { delay: 800, playerAnim: null, enemyAnim: 'hurt', inBattlePosition: true },
+      // Player's second attack - player on top again
+      { delay: 800, playerAnim: randomPlayerAttack2, enemyAnim: null, inBattlePosition: true, playerOnTop: true },
+      { delay: 500, playerAnim: null, enemyAnim: 'hurt', inBattlePosition: true, playerOnTop: true },
       
       // Enemy dies
-      { delay: 700, playerAnim: 'idle', enemyAnim: 'die', inBattlePosition: true },
+      { delay: 500, playerAnim: 'idle', enemyAnim: 'die', inBattlePosition: true, playerOnTop: true },
       
       // Battle end
-      { delay: 1500, playerAnim: 'run', enemyAnim: null, inBattlePosition: false, cleanup: true, endBattle: true }
+      { delay: 1000, playerAnim: 'run', enemyAnim: null, inBattlePosition: false, cleanup: true, endBattle: true, playerOnTop: false }
     ];
   
     let currentStep = 0;
@@ -139,7 +142,7 @@ export default function EnemyBattleSystem({
           // Make sure enemy is cleared
           setEnemyState({
             isActive: false,
-            position: 100,
+            position: 120,
             animation: 'walk',
             frameCount: 0
           });
@@ -164,6 +167,11 @@ export default function EnemyBattleSystem({
     if (step.playerAnim && onPlayerAnimationChange) {
       onPlayerAnimationChange(step.playerAnim, step.inBattlePosition);
     }
+    
+    // Set who should be on top
+    if (step.playerOnTop !== undefined) {
+      setPlayerOnTop(step.playerOnTop);
+    }
 
     if (step.endBattle) {
       // Don't set battleInProgressRef to false here - do it in the setTimeout after battle sequence completes
@@ -184,7 +192,7 @@ export default function EnemyBattleSystem({
       // Immediately set isActive to false to allow new enemies to spawn
       setEnemyState({
         isActive: false,
-        position: 100,
+        position: 120,
         animation: 'walk',
         frameCount: 0
       });
@@ -297,6 +305,12 @@ export default function EnemyBattleSystem({
       animateEnemy();
     }
   }, [enemyState.isActive, currentEnemy, animateEnemy, enemyState.animation]);
+
+    useEffect(() => {
+      if (onPlayerZIndexChange) {
+        onPlayerZIndexChange(playerOnTop);
+      }
+    }, [playerOnTop, onPlayerZIndexChange]);
 
   const spawnNext = useCallback(() => {
     // Clear function to prevent memory leaks
@@ -486,7 +500,7 @@ export default function EnemyBattleSystem({
         transform: 'scale(1.5) scaleX(-1)',
         transformOrigin: 'bottom center',
         left: `${enemyState.position}%`,
-        zIndex: 200, // Make sure it's above background layers
+        zIndex: playerOnTop ? 101 : 103
       }}
     />
   );
