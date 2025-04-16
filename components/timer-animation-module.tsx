@@ -216,14 +216,24 @@ export default function TimerAnimationModule({ isRunning }: TimerAnimationModule
   const characterZIndex = floorLayerIndex !== -1 ? floorLayerIndex + 2 : 100;  
 
   return (
-    <div className="relative w-full min-h-full overflow-hidden">
+  <div className="relative w-full min-h-full overflow-hidden">
       {/* Parallax Background Layers */}
       {sortedLayers.map((layerKey, index) => {
-      const layerPath = level.layerPaths[layerKey as keyof typeof level.layerPaths];
-      const isFloor = layerPath === "floor.png";
-      // Use the pre-calculated characterZIndex here
-      const layerZIndex = index <= floorLayerIndex ? index + 1 : characterZIndex + (index - floorLayerIndex);
-
+        const layerPath = level.layerPaths[layerKey as keyof typeof level.layerPaths];
+        const isFloor = layerPath === "floor.png";
+        
+        // Determine the z-index based on layer position
+        let layerZIndex;
+        if (isFloor) {
+          // Floor layer gets its index
+          layerZIndex = floorLayerIndex + 1;
+        } else if (index < floorLayerIndex) {
+          // Layers below floor keep their original index
+          layerZIndex = index + 1;
+        } else if (index > floorLayerIndex) {
+          // Layers above floor start 2 above character and increment by 2
+          layerZIndex = characterZIndex + 3 + (characterZIndex - index);
+        }
         return (
           <div 
             key={`${level.id}-${layerKey}`}
@@ -233,7 +243,7 @@ export default function TimerAnimationModule({ isRunning }: TimerAnimationModule
               backgroundImage: imagesLoaded ? 
                 `url("${level.folderPath}${layerPath}")` : 
                 `url("${level.folderPath}${layerPath}")`,
-              backgroundSize: 'auto 100%',
+              backgroundSize: 'cover',
               backgroundRepeat: 'repeat-x',
               zIndex: layerZIndex,
               imageRendering: 'pixelated',
@@ -259,8 +269,8 @@ export default function TimerAnimationModule({ isRunning }: TimerAnimationModule
           imageRendering: 'pixelated',
           position: 'absolute',
           zIndex: characterZIndex,
-          left: playerMovedForBattle ? '-10%' : '0%',
-          transform: 'scale(1.5)',
+          left: playerMovedForBattle ? '-13%' : '0%',
+          transform: 'scale(2.5)',
           transformOrigin: 'bottom center',
           backgroundSize: 'auto',
         }}
@@ -268,6 +278,7 @@ export default function TimerAnimationModule({ isRunning }: TimerAnimationModule
       <EnemyBattleSystem 
         isRunning={isRunning && !inBattle}
         playerCharacter={character}
+        characterZindex={characterZIndex}
         onBattleStart={() => setInBattle(true)}
         onBattleEnd={() => {
           setInBattle(false);

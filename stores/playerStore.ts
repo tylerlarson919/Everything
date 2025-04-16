@@ -26,6 +26,7 @@ interface PomodoroSession {
     endTime: Date;
     coinReward: number;
     xpReward: number;
+    linkedTasks?: string[];
   }
   // First, define a type for Firestore doc data:
 type FirestoreTaskData = {
@@ -122,19 +123,34 @@ export const usePlayerStore = create<PlayerState>()(
         if (!state.userId) return;
         
         try {
-          // Add to Firestore
+          // Create a session object without the reward properties
+          const sessionToStore = {
+            title: session.title,
+            notes: session.notes || "",
+            duration: session.duration,
+            startTime: session.startTime,
+            endTime: session.endTime,
+            linkedTasks: session.linkedTasks || []
+          };
+          
+          // Add to Firestore WITHOUT reward values
           const sessionsRef = collection(firestore, `users/${state.userId}/pomodoro-sessions`);
           const docRef = await addDoc(sessionsRef, {
-            ...session,
+            ...sessionToStore,
             createdAt: serverTimestamp(),
           });
           
-          // Update local state
+          // Update local state with proper type casting
           set(state => ({
-            pomodoroSessions: [...state.pomodoroSessions, { ...session, id: docRef.id }]
+            pomodoroSessions: [...state.pomodoroSessions, {
+              ...sessionToStore,
+              id: docRef.id,
+              coinReward: session.coinReward,
+              xpReward: session.xpReward
+            }]
           }));
           
-          // Award coins and XP
+          // Award coins and XP - these will be saved to player stats
           get().addCoins(session.coinReward);
           get().addXP(session.xpReward);
           get().incrementPlaytime(session.duration);
@@ -143,7 +159,6 @@ export const usePlayerStore = create<PlayerState>()(
           console.error("Error logging pomodoro session:", error);
         }
       },
-
       
       // Firebase sync functions
       setUserId: (userId) => set({ userId }),

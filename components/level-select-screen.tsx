@@ -38,24 +38,22 @@ export default function LevelSelectScreen({ onConfirm }: { onConfirm: () => void
   
   return (
     <Card className="w-full">
-      <CardBody className="w-full flex flex-col relative min-h-[430px] overflow-hidden z-[0] justify-start items-center">
+      <CardBody className="w-full flex flex-col relative min-h-[530px] overflow-hidden z-[0] justify-start items-center gap-10">
         <div className="w-full h-full absolute bottom-0 left-0">
           <TimerAnimationModule isRunning={false} />
         </div>
         
         <div className="flex flex-col items-center justify-center w-full h-full z-20 p-4">
-          <div className="bg-black/40 backdrop-blur-sm rounded-lg p-4 flex flex-col items-center gap-4">
+          <div className="bg-black/40 backdrop-blur-sm rounded-lg py-4 flex flex-col items-center gap-4 min-w-[320px] max-w-[320px]">
             <h2 className="text-2xl font-bold text-white">Select Level</h2>
             
-            <div className="flex items-center gap-4">
-              <Button 
-                size="sm" 
-                variant="ghost" 
-                onPress={prevLevel}
-                className="text-white"
+            <div className="flex items-center gap-4 justify-between w-full px-4">
+            <button onClick={prevLevel}
               >
-                ←
-              </Button>
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="size-5">
+                  <path d="M9.195 18.44c1.25.714 2.805-.189 2.805-1.629v-2.34l6.945 3.968c1.25.715 2.805-.188 2.805-1.628V8.69c0-1.44-1.555-2.343-2.805-1.628L12 11.029v-2.34c0-1.44-1.555-2.343-2.805-1.628l-7.108 4.061c-1.26.72-1.26 2.536 0 3.256l7.108 4.061Z" />
+                </svg>
+              </button>
               
               <div className="text-center">
                 <h3 className="text-xl font-semibold text-white">{currentLevel.name}</h3>
@@ -68,14 +66,11 @@ export default function LevelSelectScreen({ onConfirm }: { onConfirm: () => void
                 )}
               </div>
               
-              <Button 
-                size="sm" 
-                variant="ghost" 
-                onPress={nextLevel}
-                className="text-white"
-              >
-                →
-              </Button>
+              <button  onClick={nextLevel}>
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="white" className="size-5">
+                    <path d="M5.055 7.06C3.805 6.347 2.25 7.25 2.25 8.69v8.122c0 1.44 1.555 2.343 2.805 1.628L12 14.471v2.34c0 1.44 1.555 2.343 2.805 1.628l7.108-4.061c1.26-.72 1.26-2.536 0-3.256l-7.108-4.061C13.555 6.346 12 7.249 12 8.689v2.34L5.055 7.061Z" />
+                  </svg>
+                </button>
             </div>
             
             <Button

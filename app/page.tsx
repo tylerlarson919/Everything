@@ -12,8 +12,8 @@ const Home = () => {
         <div className="w-full h-full flex justify-center">
           <StatsModule />
         </div>
-        <div className="flex flex-col md:flex-row gap-4 items-start justify-center h-full items-stretch w-full max-w-[1417px]">
-          <div className="w-full md:w-2/3">
+        <div className="flex flex-col md:flex-row gap-4 items-start justify-center h-full items-stretch w-full max-w-[1417px] relative z-0">
+          <div className="w-full md:w-2/3 relative z-0">
             <TasksModule />
           </div>
           <div className="w-full md:w-1/3">

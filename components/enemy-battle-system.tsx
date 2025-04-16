@@ -12,6 +12,7 @@ const debug = (...args: any[]) => {
 interface EnemyBattleSystemProps {
   isRunning: boolean;
   playerCharacter: any;
+  characterZindex: number;
   onBattleStart: () => void;
   onBattleEnd: () => void;
   onPlayerAnimationChange?: (animation: string, inBattlePosition?: boolean) => void;
@@ -22,6 +23,7 @@ interface EnemyBattleSystemProps {
 export default function EnemyBattleSystem({
   isRunning,
   playerCharacter,
+  characterZindex,
   onBattleStart,
   onBattleEnd,
   onPlayerAnimationChange,
@@ -44,7 +46,6 @@ export default function EnemyBattleSystem({
   const shouldMovePlayerRef = useRef(false);
   const lastTimeRef = useRef(0);
   const animationActiveRef = useRef(false);
-  const scheduleNextSpawnRef = useRef<() => void>(() => {});
   const [playerOnTop, setPlayerOnTop] = useState(false);
 
   // Add reference to track battle state
@@ -161,7 +162,6 @@ export default function EnemyBattleSystem({
       }
       
         const step = battleSequence[currentStep];
-    console.log('Battle step:', currentStep, step);
     
     // Update player animation if needed
     if (step.playerAnim && onPlayerAnimationChange) {
@@ -258,8 +258,8 @@ export default function EnemyBattleSystem({
           shouldMovePlayerRef.current = true;
         }
   
-        // Check if enemy reached the player position (45%)
-        if (newPosition <= 45 && prev.animation === 'walk' && !battleInProgressRef.current) {
+        // Check if enemy reached the player position (48%)
+        if (newPosition <= 48 && prev.animation === 'walk' && !battleInProgressRef.current) {
           console.log('Enemy reached player - starting battle');
           // Cancel the animation frame to stop movement
           if (animationFrameRef.current) {
@@ -268,14 +268,14 @@ export default function EnemyBattleSystem({
           }
           animationActiveRef.current = false;
           setTimeout(() => startBattle(), 0);
-          return { ...prev, position: 45, frameCount: newFrameCount }; // Ensure it stops at 45
+          return { ...prev, position: 48, frameCount: newFrameCount }; // Ensure it stops at 48
         }
         
         return { ...prev, position: newPosition, frameCount: newFrameCount };
       });
       
       // Only continue animation if we haven't reached the target position
-      if (positionRef.current > 45 && !battleInProgressRef.current) {
+      if (positionRef.current > 48 && !battleInProgressRef.current) {
         animationFrameRef.current = requestAnimationFrame(animate);
       } else {
         animationActiveRef.current = false;
@@ -497,10 +497,10 @@ export default function EnemyBattleSystem({
         backgroundSize: 'auto',
         position: 'absolute',
         imageRendering: 'pixelated',
-        transform: 'scale(1.5) scaleX(-1)',
+        transform: 'scale(2.5) scaleX(-1)',
         transformOrigin: 'bottom center',
         left: `${enemyState.position}%`,
-        zIndex: playerOnTop ? 101 : 103
+        zIndex: playerOnTop ? (characterZindex - 1) : (characterZindex + 1)
       }}
     />
   );

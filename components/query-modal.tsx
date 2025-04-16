@@ -263,13 +263,13 @@ export const QueryModal: React.FC<QueryModalProps> = ({ isOpen, onClose, modalTy
             </div>
           </>
         )}
-      </>
+      </> 
     );
   };
 
   return (
-    <div className={`fixed inset-0 bg-black/50 flex items-center justify-center z-[100] transition-opacity duration-300 ${isOpen ? "opacity-100" : "opacity-0 pointer-events-none"}`}>
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-md transform transition-transform duration-300 p-6 relative">
+    <div className={`fixed inset-0 bg-black/50 flex items-center justify-center z-[100] transition-opacity duration-200 ${isOpen ? "opacity-100" : "opacity-0 pointer-events-none"}`}>
+      <div className="bg-white dark:bg-black/20 rounded-lg backdrop-blur-sm p-6 w-full max-w-md z-[101]">
         <button className="absolute top-4 right-4 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-white" onClick={handleClose}>
           <CloseIcon className="w-5 h-5" />
         </button>

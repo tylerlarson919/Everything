@@ -4,12 +4,10 @@ import { Button } from "@heroui/button";
 import { Card, CardBody } from "@heroui/card";
 import { Tabs, Tab } from "@heroui/tabs";
 import { Input } from "@heroui/input";
+import { Tooltip } from "@heroui/tooltip";
+import { Checkbox } from "@heroui/checkbox";
 import TimerAnimationModule from "@/components/timer-animation-module";
 import { usePlayerStore } from "../stores/playerStore";
-import { collection, addDoc, serverTimestamp } from "firebase/firestore";
-import { firestore } from "../config/firebase";
-import SettingsIcon from "./icons/settings";
-import { relative } from "path";
 import LevelSelectScreen from "./level-select-screen";
 // Timer modes
 enum TimerMode {
@@ -28,7 +26,14 @@ const DEFAULT_SETTINGS = {
 
 export default function TimerModule() {
   // Player store state
-  const { userId, addCoins, addXP, incrementPlaytime } = usePlayerStore();
+  const { 
+    userId, 
+    addCoins, 
+    addXP, 
+    incrementPlaytime, 
+    tasks, 
+    logPomodoroSession 
+  } = usePlayerStore();
 
   // Timer state
   const [mode, setMode] = useState<TimerMode>(TimerMode.POMODORO);
@@ -47,6 +52,11 @@ export default function TimerModule() {
   const [lockedSessionDuration, setLockedSessionDuration] = useState(0);
   const [lockedCoinReward, setLockedCoinReward] = useState(0);
   const [lockedXpReward, setLockedXpReward] = useState(0);
+  const [lockedCoinBonus, setLockedCoinBonus] = useState(0);
+  const [lockedXpBonus, setLockedXpBonus] = useState(0);
+  const [linkedTasks, setLinkedTasks] = useState<string[]>([]);
+  const [isLinkModalOpen, setIsLinkModalOpen] = useState(false);
+  const [tempLinkedTasks, setTempLinkedTasks] = useState<string[]>([]);
   // Reset timer when mode changes
   useEffect(() => {
     setTimeRemaining(settings[mode]);
@@ -54,6 +64,13 @@ export default function TimerModule() {
       stopTimer();
     }
   }, [mode, settings]);
+
+  const linkTaskClick = () => {
+    // Initialize temporary state with current selections
+    setTempLinkedTasks([...linkedTasks]);
+    setIsLinkModalOpen(true);
+  };
+  
 
   // Format time as MM:SS
   const formatTime = (seconds: number) => {
@@ -101,7 +118,7 @@ export default function TimerModule() {
   };
 
   // Handle timer completion with animation and sound feedback
-  const completeTimer = () => {
+  const completeTimer = async () => {
     stopTimer();
     
     // Play completion sound
@@ -116,29 +133,24 @@ export default function TimerModule() {
       setLockedSessionDuration(sessionDuration);
       setTotalSessionTime(prev => prev + sessionDuration);
       
-      // Lock rewards based on duration
+      // Calculate rewards based on duration (minutes)
       const minutes = Math.floor(sessionDuration / 60);
       const coinReward = Math.max(1, minutes);
       const xpReward = Math.max(2, minutes * 2);
+      
+      // Set for display in modal
       setLockedCoinReward(coinReward);
       setLockedXpReward(xpReward);
-      
+
       // Increment sessions completed
       const newSessions = sessions + 1;
       setSessions(newSessions);
       
+      // Log the session
+      await logCompletedSession(sessionDuration, coinReward, xpReward);
+      
       // Show completion dialog with rewards
       setShowCompletionDialog(true);
-      
-      // Determine which break to take next
-      if (newSessions % settings.sessionsUntilLongBreak === 0) {
-        setMode(TimerMode.LONG_BREAK);
-      } else {
-        setMode(TimerMode.SHORT_BREAK);
-      }
-      
-      // Log session to Firestore and award rewards
-      logCompletedSession(sessionDuration);
       
       // Trigger browser notification if supported and page is not visible
       if (document.visibilityState !== 'visible' && 'Notification' in window) {
@@ -151,13 +163,34 @@ export default function TimerModule() {
           Notification.requestPermission();
         }
       }
+      
+      // The mode change and reset will happen when the user closes the dialog
     } else {
       // If we completed a break, go back to pomodoro
       setMode(TimerMode.POMODORO);
+      // Reset the timer for the new mode
+      setTimeRemaining(settings[TimerMode.POMODORO]);
     }
+  };
+
+  const handleCompletionDialogClose = () => {
+    setShowCompletionDialog(false);
+    
+    // Determine which break to take next based on sessions completed
+    const nextMode = sessions % settings.sessionsUntilLongBreak === 0 
+      ? TimerMode.LONG_BREAK 
+      : TimerMode.SHORT_BREAK;
+    
+    // Update the mode
+    setMode(nextMode);
     
     // Reset the timer for the new mode
-    setTimeRemaining(settings[mode]);
+    setTimeRemaining(settings[nextMode]);
+    
+    // Reset session data
+    setLinkedTasks([]);
+    sessionStartTimeRef.current = null;
+    setSessionNotes("");
   };
 
   // Reset the current timer
@@ -191,33 +224,24 @@ export default function TimerModule() {
   };
 
   // Log completed pomodoro session to Firestore and award coins/XP
-  const logCompletedSession = async (durationSeconds: number) => {
+  const logCompletedSession = async (durationSeconds: number, coinReward: number, xpReward: number) => {
     if (!userId) return;
-    
+  
     try {
-      // Use the locked reward values directly instead of recalculating
-      const coinReward = lockedCoinReward;
-      const xpReward = lockedXpReward;
-      
-      // Add the session to Firestore
-      const sessionsRef = collection(firestore, `users/${userId}/pomodoro-sessions`);
-      await addDoc(sessionsRef, {
+      // Create session object with corrected reward values
+      const session = {
         title: sessionTitle,
         notes: sessionNotes,
         duration: durationSeconds,
-        startTime: sessionStartTimeRef.current,
+        startTime: sessionStartTimeRef.current || new Date(),
         endTime: new Date(),
-        coinReward,
-        xpReward,
-        createdAt: serverTimestamp(),
-      });
+        coinReward: coinReward, // Use calculated rewards directly
+        xpReward: xpReward,
+        linkedTasks: linkedTasks
+      };
       
-      // Award coins and XP
-      addCoins(coinReward);
-      addXP(xpReward);
-      
-      // Increment total playtime
-      incrementPlaytime(durationSeconds);
+      // Send to playerStore - don't apply the rewards here since the store will do that
+      await logPomodoroSession(session);
       
       // Reset the session start time for the next session
       sessionStartTimeRef.current = null;
@@ -247,7 +271,7 @@ export default function TimerModule() {
       {showLevelSelect ? (
         <LevelSelectScreen onConfirm={() => setShowLevelSelect(false)} />
       ) : (
-      <CardBody className="w-full flex flex-col relative min-h-[430px] overflow-hidden z-[0] justify-start items-center gap-10">
+      <CardBody className="w-full flex flex-col relative min-h-[530px] overflow-hidden z-[0] justify-start items-center gap-10">
           <div className="w-full h-full absolute bottom-0 left-0">
             <TimerAnimationModule 
               isRunning={isRunning} 
@@ -255,7 +279,7 @@ export default function TimerModule() {
               mode={mode}
             />
           </div>
-          <div className="flex flex-col justify-center items-center w-full z-[20]">
+          <div className="flex flex-col justify-center items-center w-full h-full z-[20]">
             <button onClick={() => setIsSettingsOpen(true)}>
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="text-6 absolute top-2 left-3 w-7 h-7 text-black dark:text-white">
                 <path fillRule="evenodd" d="M11.078 2.25c-.917 0-1.699.663-1.85 1.567L9.05 4.889c-.02.12-.115.26-.297.348a7.493 7.493 0 0 0-.986.57c-.166.115-.334.126-.45.083L6.3 5.508a1.875 1.875 0 0 0-2.282.819l-.922 1.597a1.875 1.875 0 0 0 .432 2.385l.84.692c.095.078.17.229.154.43a7.598 7.598 0 0 0 0 1.139c.015.2-.059.352-.153.43l-.841.692a1.875 1.875 0 0 0-.432 2.385l.922 1.597a1.875 1.875 0 0 0 2.282.818l1.019-.382c.115-.043.283-.031.45.082.312.214.641.405.985.57.182.088.277.228.297.35l.178 1.071c.151.904.933 1.567 1.85 1.567h1.844c.916 0 1.699-.663 1.85-1.567l.178-1.072c.02-.12.114-.26.297-.349.344-.165.673-.356.985-.57.167-.114.335-.125.45-.082l1.02.382a1.875 1.875 0 0 0 2.28-.819l.923-1.597a1.875 1.875 0 0 0-.432-2.385l-.84-.692c-.095-.078-.17-.229-.154-.43a7.614 7.614 0 0 0 0-1.139c-.016-.2.059-.352.153-.43l.84-.692c.708-.582.891-1.59.433-2.385l-.922-1.597a1.875 1.875 0 0 0-2.282-.818l-1.02.382c-.114.043-.282.031-.449-.083a7.49 7.49 0 0 0-.985-.57c-.183-.087-.277-.227-.297-.348l-.179-1.072a1.875 1.875 0 0 0-1.85-1.567h-1.843ZM12 15.75a3.75 3.75 0 1 0 0-7.5 3.75 3.75 0 0 0 0 7.5Z" clipRule="evenodd" />
@@ -273,7 +297,7 @@ export default function TimerModule() {
           }
           </div>
           <div className="flex flex-col gap-1 items-center justify-center w-[214px] z-[20] p-4 bg-black/20 rounded-lg backdrop-blur-sm">
-          {/* Timer Display */}
+            {/* Timer Display */}
             <div className="text-5xl font-bold font-mono">
               {formatTime(timeRemaining)}
             </div>
@@ -313,11 +337,22 @@ export default function TimerModule() {
                 className={`max-w-xs ${isRunning ? "hidden" : "relative"} transition-all duration-1000`}
                 placeholder="What are you working on?"
                 classNames={{
-                  input: "text-[12px]",
+                  input: "text-[12px] data-[has-end-content=true]:pr-0",
                   label: "absolute hidden top-0 left-0 ",
                   base: "data-[has-label=true]:mt-0 ",
                   inputWrapper: "dark:bg-black/40 bg-black/40 group-data-[focus=true]:bg-black/60",
+                  innerWrapper: "pr-0",
+
                 }}
+                endContent={
+                  <div className="relative">
+                  <button onClick={linkTaskClick}>
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="absolute right-0 top-0 bottom-0 my-auto size-4 text-foreground-500 hover:text-white transition-all">
+                      <path fillRule="evenodd" d="M19.902 4.098a3.75 3.75 0 0 0-5.304 0l-4.5 4.5a3.75 3.75 0 0 0 1.035 6.037.75.75 0 0 1-.646 1.353 5.25 5.25 0 0 1-1.449-8.45l4.5-4.5a5.25 5.25 0 1 1 7.424 7.424l-1.757 1.757a.75.75 0 1 1-1.06-1.06l1.757-1.757a3.75 3.75 0 0 0 0-5.304Zm-7.389 4.267a.75.75 0 0 1 1-.353 5.25 5.25 0 0 1 1.449 8.45l-4.5 4.5a5.25 5.25 0 1 1-7.424-7.424l1.757-1.757a.75.75 0 1 1 1.06 1.06l-1.757 1.757a3.75 3.75 0 1 0 5.304 5.304l4.5-4.5a3.75 3.75 0 0 0-1.035-6.037.75.75 0 0 1-.354-1Z" clipRule="evenodd" />
+                    </svg>
+                  </button>
+                </div>
+                }
               />
             )}
             {/* Timer Controls */}
@@ -369,19 +404,81 @@ export default function TimerModule() {
               </button>
             </div>
           </div>
-        
+          {/* Link tasks modal */}
+          {isLinkModalOpen && (
+            <div className="bg-black/20 backdrop-blur-sm rounded-lg p-3 absolute top-[53px] left-1/2 translate-x-[115px] w-64 z-[30]">
+                <div className="flex justify-between items-center mb-2">
+                  <h3 className="text-sm font-semibold">Link Tasks ({tempLinkedTasks.length}/3)</h3>
+                  <button onClick={() => setIsLinkModalOpen(false)} className="text-white/70 hover:text-white text-xs">
+                    ✕
+                  </button>
+                </div>
+                
+                <div className="hiddenauto">
+                  {tasks.length === 0 ? (
+                    <div className="p-2 text-center text-white/60 text-xs">No tasks available</div>
+                  ) : (
+                    tasks.map(task => (
+                      <div key={task.id} 
+                        className="flex items-center py-1.5 px-2 rounded hover:bg-white/10 transition-colors text-sm"
+                      >
+                        <Checkbox
+                          size="sm"
+                          isSelected={tempLinkedTasks.includes(task.id)}
+                          isDisabled={tempLinkedTasks.length >= 3 && !tempLinkedTasks.includes(task.id)}
+                          classNames={{
+                            base: "data-[selected=true]:bg-white/30",
+                          }}
+                          onValueChange={(isChecked) => {
+                            if (isChecked) {
+                              if (tempLinkedTasks.length < 3) {
+                                setTempLinkedTasks([...tempLinkedTasks, task.id]);
+                              }
+                            } else {
+                              setTempLinkedTasks(tempLinkedTasks.filter(id => id !== task.id));
+                            }
+                          }}
+                        />
+                        <label className="flex-1 cursor-pointer ml-2 truncate text-white/90 text-xs">
+                          <span className="mr-1">{task.emoji || '📝'}</span>
+                          {task.title}
+                        </label>
+                      </div>
+                    ))
+                  )}
+                </div>
+                
+                <div className="mt-2 pt-2 border-t border-white/10 flex justify-end gap-2">
+                  <button 
+                    onClick={() => setIsLinkModalOpen(false)}
+                    className="text-xs text-white/70 hover:text-white"
+                  >
+                    Cancel
+                  </button>
+                  <button 
+                    onClick={() => {
+                      setLinkedTasks(tempLinkedTasks);
+                      setIsLinkModalOpen(false);
+                    }}
+                    className="text-xs bg-white/20 hover:bg-white/30 text-white px-2 py-1 rounded transition-colors"
+                  >
+                    Save
+                  </button>
+                </div>
+            </div>
+          )}
         {/* Settings Modal */}
         {isSettingsOpen && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[1000]">
-            <div className="bg-white dark:bg-dark2 rounded-lg p-6 w-full max-w-md z-[1010]">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-bold">Timer Settings</h3>
+          <div className="absolute inset-0 w-auto h-auto bg-black/50  backdrop-blur-md flex items-center justify-center z-[100] transition-opacity duration-200">
+            <div className="p-6 w-full h-full z-[1001]">
+            <div className="flex justify-between items-center">
+              <h3 className="text-lg font-bold pb-2">Timer Settings</h3>
               <button onClick={() => setIsSettingsOpen(false)} className="text-gray-500">✕</button>
             </div>
             
-            <div className="flex flex-col gap-4">
-              <div>
-                <label className="block text-sm font-medium mb-2">Focus Duration (minutes)</label>
+            <div className="flex flex-col gap-6">
+              <div className="flex flex-col gap-2">
+                <label className="block text-sm font-medium">Focus Duration (minutes)</label>
                 <Input 
                   type="number" 
                   min="1" 
@@ -391,8 +488,8 @@ export default function TimerModule() {
                 />
               </div>
               
-              <div>
-                <label className="block text-sm font-medium mb-2">Short Break Duration (minutes)</label>
+              <div className="flex flex-col gap-1">
+                <label className="block text-sm font-medium">Short Break Duration (minutes)</label>
                 <Input 
                   type="number" 
                   min="1" 
@@ -402,8 +499,8 @@ export default function TimerModule() {
                 />
               </div>
               
-              <div>
-                <label className="block text-sm font-medium mb-2">Long Break Duration (minutes)</label>
+              <div className="flex flex-col gap-1">
+                <label className="block text-sm font-medium">Long Break Duration (minutes)</label>
                 <Input 
                   type="number" 
                   min="1" 
@@ -413,8 +510,8 @@ export default function TimerModule() {
                 />
               </div>
               
-              <div>
-                <label className="block text-sm font-medium mb-2">Sessions Until Long Break</label>
+              <div className="flex flex-col gap-1">
+                <label className="block text-sm font-medium">Sessions Until Long Break</label>
                 <Input 
                   type="number" 
                   min="1" 
@@ -426,7 +523,7 @@ export default function TimerModule() {
                   }}
                 />
               </div>
-              <div className="mt-6 flex justify-between">
+              <div className="absolute bottom-6 left-0 flex justify-between w-full px-6">
                 <Button color="secondary" onPress={() => {
                   setIsSettingsOpen(false);
                   setShowLevelSelect(true);
@@ -449,22 +546,50 @@ export default function TimerModule() {
             <div className="bg-white dark:bg-dark2 rounded-lg p-6 w-full max-w-md z-[1010]">
               <div className="flex justify-center items-center relative pb-4">
                 <h3 className="text-2xl font-bold">Session Completed!</h3>
-                <button onClick={() => setShowCompletionDialog(false)} className="text-gray-500 hover:text-gray-400 absolute -top-2 right-0 text-lg transition-all">✕</button>
+                <button onClick={handleCompletionDialogClose} className="text-gray-500 hover:text-gray-400 absolute -top-2 right-0 text-lg transition-all">✕</button>
               </div>              
               <div className="flex flex-col items-center gap-4">
                 <p className="text-xl">{Math.floor(lockedSessionDuration / 60)} min</p>
-                <div className="flex justify-center gap-4 w-full  rounded-lg">
+                <div className="flex justify-center gap-6 w-full rounded-lg">
                   <div className="text-center">
-                    <p className="text-sm text-gray-500">Coins</p>
-                    <p className="font-bold text-xl text-amber-500">+{Math.floor(lockedCoinReward / 60)} 🪙</p>
+                    <div className="text-sm text-gray-500 relative">Coins
+                    <Tooltip content={`+${lockedCoinBonus} 🪙 Task Link Bonus!`} placement="left" className="text-[10px]" >
+                      <div className="font-bold text-sm text-amber-500 absolute bottom-0 right-full">
+                        {lockedCoinBonus}
+                      </div>
+                    </Tooltip>
+                    </div>
+                    <p className="font-bold text-xl text-amber-500">+{lockedCoinReward} 🪙</p>
+
                   </div>
                   
                   <div className="text-center">
-                    <p className="text-sm text-gray-500">XP</p>
-                    <p className="font-bold text-xl text-blue-500">+{Math.floor((lockedXpReward / 60) * 2)} ✨</p>
+                    <div className="text-sm text-gray-500 relative">XP
+                    <Tooltip content={`+${lockedXpBonus} ✨ Task Link Bonus!`} placement="left" className="text-[10px]" >
+                      <div className="font-bold text-sm text-blue-500 absolute bottom-0 right-full">
+                        {lockedXpReward}
+                      </div>
+                    </Tooltip>
+                    </div>
+                    <p className="font-bold text-xl text-blue-500">+{lockedXpReward} ✨</p>
                   </div>
                 </div>
-                
+
+                {linkedTasks.length > 0 && (
+                  <div className="w-full">
+                    <p className="text-sm text-gray-500">Linked Tasks:</p>
+                    <div className="rounded-md p-1">
+                      {tasks
+                        .filter(task => linkedTasks.includes(task.id))
+                        .map(task => (
+                          <div key={task.id} className="flex items-center py-1">
+                            <span>{task.emoji || '📝'}</span>
+                            <span className="ml-2">{task.title}</span>
+                          </div>
+                        ))}
+                    </div>
+                  </div>
+                )}
                 <textarea
                   className="w-full p-2 border border-gray-300 dark:border-gray-700 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   rows={1}
@@ -475,7 +600,7 @@ export default function TimerModule() {
               </div>
               
               <div className="mt-6 flex justify-center">
-                <Button onPress={() => setShowCompletionDialog(false)}>Continue</Button>
+                <Button onPress={handleCompletionDialogClose}>Continue</Button>
               </div>
             </div>
           </div>

@@ -96,8 +96,8 @@ export default function TasksModule() {
   };
 
   return (
-    <div className="w-full h-full flex flex-col items-center justify-center overflow-visible relative">
-      <Card className="w-full h-full bg-transparent shadow-none">
+    <div className="w-full h-full flex flex-col items-center justify-center overflow-visable relative z-0">
+      <Card className="w-full h-full bg-transparent shadow-none z-first">
         <CardBody className="w-full p-0">
           <div className="flex flex-row gap-2 items-center justify-between">
             <Dropdown>

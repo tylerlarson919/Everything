@@ -38,7 +38,7 @@ export default function StatsModule() {
     };
   
     return (
-      <div className="w-full h-full flex flex-col lg:flex-row items-center justify-start gap-4 max-w-[1417px]">
+      <div className="w-full h-full flex flex-col items-center justify-start gap-4 max-w-[1417px]">
         <Card className="w-full h-full lg:max-w-[746px] min-w-[550px]">
           <CardBody className="w-full flex flex-row items-start relative min-h-[430px] overflow-hidden z-[0]">
             <div className="absolute right-2 bottom-20 w-auto z-[1]">

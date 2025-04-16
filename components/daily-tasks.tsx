@@ -165,7 +165,7 @@ const isTaskForToday = (task: Task): boolean => {
   });
 
   return (
-    <div className="dark:bg-[#18181b] rounded-xl shadow-lg p-4 w-full max-w-[1417px] min-h-[700px] mx-auto z-1">
+    <div className="dark:bg-[#18181b] rounded-xl shadow-lg p-4 w-full max-w-[1417px] min-h-[700px] mx-auto z-0">
       <div className='flex flex-row justify-start items-center pb-2 gap-2'>
         <h2 className="text-xl font-bold">Daily Tasks - {formatTodayDate()}</h2>
         <button onClick={loadTasks}>
