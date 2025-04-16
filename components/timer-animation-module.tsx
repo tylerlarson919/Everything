@@ -174,10 +174,11 @@ export default function TimerAnimationModule({ isRunning }: TimerAnimationModule
         // Improved speed calculation
         const speed = isFloor ? 1.2 : 0.2 + (layerNumber * 0.1);
         
-        // Update position without resetting abruptly
+        // Update position with Math.round to prevent sub-pixel rendering issues
         positionsRef.current[layerKey] -= speed;
         
-        layerRef.style.backgroundPosition = `${positionsRef.current[layerKey]}px 0px`;
+        // Use Math.round to prevent sub-pixel rendering which can cause gaps
+        layerRef.style.backgroundPosition = `${Math.round(positionsRef.current[layerKey])}px 0px`;
       });
       
       animationFrameRef.current = requestAnimationFrame(animateBackground);
@@ -225,13 +226,10 @@ export default function TimerAnimationModule({ isRunning }: TimerAnimationModule
         // Determine the z-index based on layer position
         let layerZIndex;
         if (isFloor) {
-          // Floor layer gets its index
           layerZIndex = floorLayerIndex + 1;
         } else if (index < floorLayerIndex) {
-          // Layers below floor keep their original index
           layerZIndex = index + 1;
         } else if (index > floorLayerIndex) {
-          // Layers above floor start 2 above character and increment by 2
           layerZIndex = characterZIndex + 3 + (characterZIndex - index);
         }
         return (
@@ -240,17 +238,19 @@ export default function TimerAnimationModule({ isRunning }: TimerAnimationModule
             ref={(el) => { layerRefs.current[layerKey] = el; }}
             className="absolute inset-0 w-full h-full"
             style={{
-              backgroundImage: imagesLoaded ? 
-                `url("${level.folderPath}${layerPath}")` : 
-                `url("${level.folderPath}${layerPath}")`,
-              backgroundSize: 'cover',
+              backgroundImage: `url("${level.folderPath}${layerPath}")`,
+              backgroundSize: 'auto 100%', 
               backgroundRepeat: 'repeat-x',
+              backgroundPosition: '0 0',
               zIndex: layerZIndex,
               imageRendering: 'pixelated',
               willChange: 'background-position',
-              transform: 'translate3d(0, 0, 0)',
-              height: '100%',
-              width: '100%',
+              // Add these properties to fix the gaps
+              transform: 'translate3d(0, 0, 0)', // Forces hardware acceleration
+              width: 'calc(100% + 2px)', // Slightly wider to prevent edge gaps
+              height: 'calc(100% + 2px)', // Slightly taller to prevent edge gaps
+              left: '-1px', // Offset to center the extra width
+              top: '-1px', // Offset to center the extra height
             }}
           />
         );

@@ -15,7 +15,7 @@ export default function StatsModule() {
   const { user, items, loading } = useFirestore();
   const [characterImg, setCharacterImg] = React.useState<string>("/characters/Raiders/Raider_1/profile.png");
   const [isImageLoaded, setIsImageLoaded] = React.useState(false);
-  const { coins, xp, level, selectedCharacter, health, playtime } = usePlayerStore();
+  const { coins, xp, xpPercent, level, selectedCharacter, health, playtime } = usePlayerStore();
   const playtimeHours = Math.floor(playtime / 3600);
 
   const handleImageLoad = () => {
@@ -39,7 +39,7 @@ export default function StatsModule() {
   
     return (
       <div className="w-full h-full flex flex-col items-center justify-start gap-4 max-w-[1417px]">
-        <Card className="w-full h-full lg:max-w-[746px] min-w-[550px]">
+        <Card className="w-full h-full min-w-[550px]">
           <CardBody className="w-full flex flex-row items-start relative min-h-[430px] overflow-hidden z-[0]">
             <div className="absolute right-2 bottom-20 w-auto z-[1]">
               <Tooltip content="Click to change character" offset={-50}>
@@ -68,12 +68,12 @@ export default function StatsModule() {
                   <div className="flex justify-between items-center mb-0.5">
                     <span className="text-xs font-medium text-blue-300">XP</span>
                     <span className="text-xs font-bold text-blue-200">
-                      {xp}
+                      {xpPercent} / 100 
                     </span>
                   </div>
-                  <Tooltip content={`${xp} XP`}>
+                  <Tooltip content={`${xpPercent}%`}>
                     <div className="flex w-full">
-                      <ProgressBar percent={xp} />
+                      <ProgressBar percent={xpPercent} />
                     </div>
                   </Tooltip>
                 </div>

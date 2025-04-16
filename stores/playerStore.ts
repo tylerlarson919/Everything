@@ -42,6 +42,21 @@ type FirestoreTaskData = {
     [key: string]: any;
   }; 
 
+  const calculateLevelInfo = (totalXp: number) => {
+    // Determine level based on XP
+    const level = Math.floor(totalXp / 100);
+    
+    // Calculate previous and next level thresholds
+    const prevLevelThreshold = level * 100;
+    const nextLevelThreshold = (level + 1) * 100;
+    
+    // Calculate progress percentage toward next level
+    const xpForCurrentLevel = totalXp - prevLevelThreshold;
+    const xpNeededForNextLevel = nextLevelThreshold - prevLevelThreshold;
+    const xpPercent = (xpForCurrentLevel / xpNeededForNextLevel) * 100;
+        
+    return { level, xpPercent };
+  };
 // Define TypeScript interface for player state
 interface PlayerState {
   // User info
@@ -51,6 +66,7 @@ interface PlayerState {
   // Player data
   coins: number;
   xp: number;
+  xpPercent: number;
   level: number;
   selectedCharacter: string;
   selectedLevel: string;
@@ -111,6 +127,7 @@ export const usePlayerStore = create<PlayerState>()(
       // Initial state
       coins: 0,
       xp: 0,
+      xpPercent: 0,
       level: 1,
       selectedCharacter: 'default',
       selectedLevel: 'default',
@@ -149,6 +166,11 @@ export const usePlayerStore = create<PlayerState>()(
               xpReward: session.xpReward
             }]
           }));
+
+          console.log('Pomodoro Session Playtime:', {
+            durationSeconds: session.duration,
+            durationMinutes: session.duration / 60
+          });
           
           // Award coins and XP - these will be saved to player stats
           get().addCoins(session.coinReward);
@@ -174,14 +196,25 @@ export const usePlayerStore = create<PlayerState>()(
           
           if (playerDoc.exists()) {
             const data = playerDoc.data();
+            const currentXP = data.xp || 0;
             
+            // Add console log right before calculating level info
+            console.log('Initialize Player XP:', {
+              currentXP,
+              source: 'initializeFromFirebase'
+            });
+            console.log('Initial Playtime:', data.playtime || 0);
+
+            const { level, xpPercent } = calculateLevelInfo(data.xp || 0);
+
             // Set player state from Firebase data
             set({
               userId,
               isInitialized: true,
               coins: data.coins || 0,
               xp: data.xp || 0,
-              level: data.level || 1,
+              level,
+              xpPercent,
               selectedCharacter: data.selectedCharacter || 'default',
               selectedLevel: data.selectedLevel || 'default',
               health: data.health || 100,
@@ -230,11 +263,22 @@ export const usePlayerStore = create<PlayerState>()(
             const unsubscribeStats = onSnapshot(playerRef, (docSnapshot) => {
                 if (docSnapshot.exists() && docSnapshot.metadata.hasPendingWrites === false) {
                     const data = docSnapshot.data();
+                    const currentXP = data.xp || 0;
+    
+                    // Add console log right before calculating level info
+                    console.log('Snapshot Update XP:', {
+                      currentXP,
+                      source: 'onSnapshot'
+                    });
+                    console.log('Updated Playtime:', data.playtime || 0);
+
+                    const { level, xpPercent } = calculateLevelInfo(data.xp || 0);
                     set(state => ({
                         ...state,
                         coins: data.coins || state.coins,
                         xp: data.xp || state.xp,
-                        level: data.level || state.level,
+                        level,
+                        xpPercent,
                         selectedCharacter: data.selectedCharacter || state.selectedCharacter,
                         selectedLevel: data.selectedLevel || state.selectedLevel,
                         health: data.health || state.health,
@@ -299,15 +343,13 @@ export const usePlayerStore = create<PlayerState>()(
             coins: state.coins,
             xp: state.xp,
             level: state.level,
+            xpPercent: state.xpPercent,
             selectedCharacter: state.selectedCharacter,
             selectedLevel: state.selectedLevel,
             health: state.health,
             playtime: state.playtime,
             lastUpdated: serverTimestamp(),
           });
-          
-          // Tasks are handled by the collection listeners now
-          // No need to manually sync tasks array
           
         } catch (error) {
           console.error("Error syncing to Firebase:", error);
@@ -334,15 +376,20 @@ export const usePlayerStore = create<PlayerState>()(
       addXP: (amount) => {
         set((state) => {
           const newXP = state.xp + amount;
-          const xpThreshold = state.level * 100;
+          // Add console log right before calculating level info
+          console.log('Adding XP:', {
+            previousXP: state.xp,
+            amountAdded: amount,
+            newTotalXP: newXP,
+            source: 'addXP'
+          });
+          const { level, xpPercent } = calculateLevelInfo(newXP);
           
-          let newState;
-          if (newXP >= xpThreshold) {
-            newState = { xp: newXP - xpThreshold, level: state.level + 1 };
-          } else {
-            newState = { xp: newXP };
-          }
-          return newState;
+          return { 
+            xp: newXP,
+            level,
+            xpPercent
+          };
         });
         get().syncToFirebase();
       },
@@ -362,12 +409,18 @@ export const usePlayerStore = create<PlayerState>()(
       },
       
       incrementPlaytime: (seconds) => {
-        set((state) => ({ playtime: state.playtime + seconds }));
-        // Don't sync playtime on every second to reduce Firebase writes
-        // Instead, sync periodically (e.g., every minute)
-        if (get().playtime % 60 === 0) {
-          get().syncToFirebase();
-        }
+        // Convert seconds to minutes and add to existing playtime
+        const minutesToAdd = seconds / 60;
+        console.log('Playtime:', {
+          seconds,
+          minutesToAdd,
+          currentPlaytime: get().playtime,
+          newTotalPlaytime: get().playtime + minutesToAdd
+        });
+        set((state) => ({ playtime: state.playtime + minutesToAdd }));
+        
+        // Sync to Firebase after updating playtime
+        get().syncToFirebase();
       },
       
       addTask: (task) => {
@@ -417,6 +470,7 @@ export const usePlayerStore = create<PlayerState>()(
         coins: state.coins,
         xp: state.xp,
         level: state.level,
+        xpPercent: state.xpPercent,
         selectedCharacter: state.selectedCharacter,
         selectedLevel: state.selectedLevel,
         health: state.health,
